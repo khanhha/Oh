@@ -10,7 +10,7 @@ if sys.platform == 'darwin':
 
 module = Extension('pcl._pcl',
                 sources=['_pcl.pyx'],
-                include_dirs= ['G://Projects//Oh//Oh//src', 'G://Projects//Oh//Oh//3rdParty//eigen', numpy.get_include()],
+                include_dirs= ['G://Projects//Oh//Oh//src', 'G://Projects//Oh//Oh//3rdParty//eigen', 'G://Projects//Oh//Oh//3rdParty', numpy.get_include()],
                 extra_compile_args=compile_args,
                 language='c++')
 

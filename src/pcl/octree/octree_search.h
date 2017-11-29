@@ -40,6 +40,7 @@
 #define PCL_OCTREE_SEARCH_H_
 
 #include <memory>
+#include <vector>
 #include <pcl/point_cloud.h>
 #include <pcl/octree/octree_pointcloud.h>
 

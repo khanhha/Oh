@@ -55,17 +55,21 @@ int main()
 	octree.addPointsFromInputCloud();
 
 	pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> octree_density(0.001);
-	octree.setInputCloud(cloud);
-	octree.addPointsFromInputCloud();
+	octree_density.setInputCloud(cloud);
+	octree_density.addPointsFromInputCloud();
 
 	pcl::octree::OctreePointCloudSinglePoint<pcl::PointXYZ> octree_single(0.001);
-	octree.setInputCloud(cloud);
-	octree.addPointsFromInputCloud();
+	octree_single.setInputCloud(cloud);
+	octree_single.addPointsFromInputCloud();
 
 	pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_centroid(0.001);
-	octree.setInputCloud(cloud);
-	octree.addPointsFromInputCloud();
+	octree_centroid.setInputCloud(cloud);
+	octree_centroid.addPointsFromInputCloud();
 
+
+	pcl::octree::OctreePointCloudNormal<pcl::PointXYZ, pcl::Normal> octree_normal(0.001);
+	octree_normal.setInputCloud(cloud);
+	octree_normal.addPointsFromInputCloud();
 
 	return 0;
 }

@@ -40,10 +40,11 @@
 #ifndef PCL_OCTREE_NORMAL_HPP
 #define PCL_OCTREE_NORMAL_HPP
 
-#define OH_DEBUG 1
+//#define OH_DEBUG 1
 #ifdef OH_DEBUG
 #include <Windows.h>
 #endif
+#include <stack>
 #include <pcl/octree/impl/octree_pointcloud.hpp>
 
 template<typename PointT, typename NormalT, typename LeafContainerT /*= OctreeContainerPointIndices*/, typename BranchContainerT /*= OctreeContainerEmpty */>
@@ -58,8 +59,6 @@ void pcl::octree::OctreePointCloudNormal<PointT, NormalT, LeafContainerT, Branch
 	else
 	{
 		std::vector<OctreeKey> expand_leaf_keys;
-
-
 
 		OctreeT::LeafNodeIterator leafIter, leafEnd = leaf_end();
 		for (leafIter = leaf_begin(); leafIter != leafEnd; ++leafIter)
