@@ -4,6 +4,7 @@
 #include "point_types.h"
 //#define TINYOBJLOADER_IMPLEMENTATION
 #include "io/tiny_obj_loader.h"
+#include <pcl/octree/octree.h>
 
 using namespace std;
 using namespace pcl;
@@ -44,6 +45,27 @@ int main()
 	string filename = "lucy_none-Slice-54_center_vn.obj";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = load_pcl(basepath+filename, basepath);
+
+	pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree(0.001);
+	octree.setInputCloud(cloud);
+	octree.addPointsFromInputCloud();
+
+	pcl::octree::OctreePointCloudChangeDetector<pcl::PointXYZ> octree_change(0.001);
+	octree.setInputCloud(cloud);
+	octree.addPointsFromInputCloud();
+
+	pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> octree_density(0.001);
+	octree.setInputCloud(cloud);
+	octree.addPointsFromInputCloud();
+
+	pcl::octree::OctreePointCloudSinglePoint<pcl::PointXYZ> octree_single(0.001);
+	octree.setInputCloud(cloud);
+	octree.addPointsFromInputCloud();
+
+	pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_centroid(0.001);
+	octree.setInputCloud(cloud);
+	octree.addPointsFromInputCloud();
+
 
 	return 0;
 }

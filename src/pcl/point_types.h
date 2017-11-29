@@ -39,12 +39,12 @@
 #ifndef PCL_DATA_TYPES_H_
 #define PCL_DATA_TYPES_H_
 
-//#include <pcl/pcl_macros.h>
+#include <pcl/pcl_macros.h>
 #include <bitset>
-//#include <pcl/register_point_struct.h>
-//#include <boost/mpl/contains.hpp>
-//#include <boost/mpl/fold.hpp>
-//#include <boost/mpl/vector.hpp>
+#include <pcl/register_point_struct.h>
+#include <boost/mpl/contains.hpp>
+#include <boost/mpl/fold.hpp>
+#include <boost/mpl/vector.hpp>
 
 /**
   * \file pcl/point_types.h
@@ -341,9 +341,8 @@ namespace pcl
 
 /** @} */
 
-#include "impl/point_types.hpp"  // Include struct definitions
+#include <pcl/impl/point_types.hpp>  // Include struct definitions
 
-#ifdef FULL_PCL
 // ==============================
 // =====POINT_CLOUD_REGISTER=====
 // ==============================
@@ -801,8 +800,8 @@ namespace pcl
     { };
 
   }
+
 } // namespace pcl
-#endif
 
 #if defined _MSC_VER
   #pragma warning(default: 4201)
