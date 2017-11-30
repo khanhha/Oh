@@ -2,27 +2,27 @@
 cimport pcl_defs as cpp
 cimport pcl_octree_180 as pcloct
 
-cdef class OctreePointCloudNormal(OctreePointCloud):
+cdef class OctreePointCloudNormal(OctreePointCloudSearch):
     """
     Octree pointcloud normal
     """
-    cdef pcloct.OctreePointCloudNormal_t *me2
+    cdef pcloct.OctreePointCloudNormal_t *me_normal
 
     def __cinit__(self, double resolution):
         """
         Constructs octree pointcloud with given resolution at lowest octree level
         """
-        self.me2 = NULL
+        self.me_normal = NULL
         self.me = NULL
         if resolution <= 0.:
             raise ValueError("Expected resolution > 0., got %r" % resolution)
 
-        self.me2 = <pcloct.OctreePointCloudNormal_t*> new pcloct.OctreePointCloudNormal_t(resolution)
-        self.me = <pcloct.OctreePointCloud_t*> self.me2
+        self.me_normal = <pcloct.OctreePointCloudNormal_t*> new pcloct.OctreePointCloudNormal_t(resolution)
+        self.me = <pcloct.OctreePointCloud_t*> self.me_normal
 
     def __dealloc__(self):
-        del self.me2
-        self.me2 = NULL
+        del self.me_normal
+        self.me_normal = NULL
         self.me = NULL
 
     def enable_dynamic_depth(self, int max_obj_per_leaf):
@@ -32,10 +32,10 @@ cdef class OctreePointCloudNormal(OctreePointCloud):
         """
         Provide a pointer to the input data set.
         """
-        self.me2.setInputNormalCloud(pc.thisptr_shared)
+        self.me_normal.setInputNormalCloud(pc.thisptr_shared)
 
     def set_leaf_normal_threshold(self, double value):
-        self.me2.setNormalThreshold(value)
+        self.me_normal.setNormalThreshold(value)
 
     # base OctreePointCloud
     def define_bounding_box(self):

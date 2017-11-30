@@ -133,13 +133,14 @@ cnp.import_array()
 
 include "pxi/pxiInclude_180.pxi"
 include "pxi/PointCloud_PointXYZ_180.pxi"
+
 # include "pxi/PointCloud_PointXYZI_180.pxi"
 # include "pxi/PointCloud_PointXYZRGB_180.pxi"
 # include "pxi/PointCloud_PointXYZRGBA_180.pxi"
 # include "pxi/PointCloud_PointWithViewpoint.pxi"
-# include "pxi/PointCloud_Normal.pxi"
-# include "pxi/PointCloud_PointNormal.pxi"
 
+# include "pxi/PointCloud_PointNormal.pxi"
+include "pxi/PointCloud_Normal.pxi"
 
 ### common ###
 # def deg2rad(float alpha):

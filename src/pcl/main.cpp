@@ -5,11 +5,12 @@
 //#define TINYOBJLOADER_IMPLEMENTATION
 #include "io/tiny_obj_loader.h"
 #include <pcl/octree/octree.h>
+#include <random>
 
 using namespace std;
 using namespace pcl;
 
-PointCloud<PointXYZ>::Ptr load_pcl(const string &filename, const string &basepath)
+void load_pcl(const string &filename, const string &basepath, PointCloud<PointXYZ>::Ptr cloud, PointCloud<Normal>::Ptr normal)
 {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -20,56 +21,40 @@ PointCloud<PointXYZ>::Ptr load_pcl(const string &filename, const string &basepat
 
 	if (ret)
 	{
-		PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-
 		for (size_t v = 0; v < attrib.vertices.size() / 3; v++) {
 			PointXYZ p(attrib.vertices[3 * v + 0], attrib.vertices[3 * v + 1], attrib.vertices[3 * v + 2]);
 			cloud->push_back(p);
-#if 0
-			printf("  v[%ld] = (%f, %f, %f)\n", static_cast<long>(v),
-				static_cast<const double>(attrib.vertices[3 * v + 0]),
-				static_cast<const double>(attrib.vertices[3 * v + 1]),
-				static_cast<const double>(attrib.vertices[3 * v + 2]));
-#endif
+			Normal n(attrib.normals[3 * v + 0], attrib.normals[3 * v + 1], attrib.normals[3 * v + 2]);
+			normal->push_back(n);
 		}
-
-		return cloud;
-	}
-	else {
-		return  PointCloud<PointXYZ>::Ptr();
 	}
 }
 
 int main()
 {
-	string filename = "lucy_none-Slice-54_center_vn.obj";
+	string filename = "lucy_none-Slice-55_center_vn_normal.obj";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = load_pcl(basepath+filename, basepath);
 
-	pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree(0.001);
+	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	PointCloud<Normal>::Ptr	normal	= PointCloud<Normal>::Ptr(new PointCloud<Normal>());
+
+	load_pcl(basepath+filename, basepath, cloud, normal);
+
+#if 0
+	pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree(0.1);
 	octree.setInputCloud(cloud);
 	octree.addPointsFromInputCloud();
-
-	pcl::octree::OctreePointCloudChangeDetector<pcl::PointXYZ> octree_change(0.001);
+#else
+	pcl::octree::OctreePointCloudNormal<pcl::PointXYZ, pcl::Normal> octree(0.1);
 	octree.setInputCloud(cloud);
+	octree.setInputNormalCloud(normal);
+	//octree.setNormalThreshold(0.8);
+	octree.enableDynamicDepth(100);
 	octree.addPointsFromInputCloud();
+#endif
 
-	pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> octree_density(0.001);
-	octree_density.setInputCloud(cloud);
-	octree_density.addPointsFromInputCloud();
-
-	pcl::octree::OctreePointCloudSinglePoint<pcl::PointXYZ> octree_single(0.001);
-	octree_single.setInputCloud(cloud);
-	octree_single.addPointsFromInputCloud();
-
-	pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_centroid(0.001);
-	octree_centroid.setInputCloud(cloud);
-	octree_centroid.addPointsFromInputCloud();
-
-
-	pcl::octree::OctreePointCloudNormal<pcl::PointXYZ, pcl::Normal> octree_normal(0.001);
-	octree_normal.setInputCloud(cloud);
-	octree_normal.addPointsFromInputCloud();
-
+	std::vector<int> idxs;
+	std::vector<float> dsts;
+	octree.radiusSearch(50, 50.0, idxs, dsts, 100);
 	return 0;
 }
