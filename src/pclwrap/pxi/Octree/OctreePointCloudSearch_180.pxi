@@ -78,6 +78,34 @@ cdef class OctreePointCloudSearch(OctreePointCloud):
             sqdist[i] = k_sqr_distances[i]
             ind[i] = k_indices[i]
 
+    def nearest_k_search_for_a_point(self, point, int k=1):
+        """
+        Find the k nearest neighbours and squared distances for the point
+        at pc[index]. Results are in ndarrays, size (k)
+        Returns: (k_indices, k_sqr_distances)
+        """
+        cdef cnp.ndarray[float] sqdist = np.zeros(k, dtype=np.float32)
+        cdef cnp.ndarray[int] ind = np.zeros(k, dtype=np.int32)
+
+        self._nearest_k_1(point, k, ind, sqdist)
+        return ind, sqdist
+
+    @cython.boundscheck(False)
+    cdef void _nearest_k_1(self, point, int k,
+                         cnp.ndarray[ndim=1, dtype=int, mode='c'] ind,
+                         cnp.ndarray[ndim=1, dtype=float, mode='c'] sqdist
+                        ) except +:
+        # k nearest neighbors query for a single point.
+        cdef vector[int] k_indices
+        cdef vector[float] k_sqr_distances
+        k_indices.resize(k)
+        k_sqr_distances.resize(k)
+        # self.me.nearestKSearch(pc.thisptr()[0], index, k, k_indices, k_sqr_distances)
+        (<pcloct.OctreePointCloudSearch_t*>self.me).nearestKSearch(to_point_t(point), k, k_indices, k_sqr_distances)
+
+        for i in range(k):
+            sqdist[i] = k_sqr_distances[i]
+            ind[i] = k_indices[i]
     ###
 
     # radius Search
@@ -457,7 +485,6 @@ cdef class OctreePointCloudSearch_PointXYZRGBA(OctreePointCloud_PointXYZRGBA):
         """
         Add points from input point cloud to octree.
         """
-        print("Hello Khanh")
         self.me2.addPointsFromInputCloud()
 
     def is_voxel_occupied_at_point(self, point):

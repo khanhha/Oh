@@ -17,7 +17,7 @@ void load_pcl(const string &filename, const string &basepath, PointCloud<PointXY
 	std::vector<tinyobj::material_t> materials;
 	std::string err;
 
-	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, filename.c_str(), basepath.c_str(), false);
+	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, filename.c_str(),  basepath.c_str(), false);
 
 	if (ret)
 	{
@@ -56,5 +56,9 @@ int main()
 	std::vector<int> idxs;
 	std::vector<float> dsts;
 	octree.radiusSearch(50, 50.0, idxs, dsts, 100);
+	
+	idxs.clear(); dsts.clear();
+	octree.nearestKSearch(50, 50, idxs, dsts);
+
 	return 0;
 }

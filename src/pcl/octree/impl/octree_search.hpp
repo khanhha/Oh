@@ -258,13 +258,13 @@ pcl::octree::OctreePointCloudSearch<PointT, LeafContainerT, BranchContainerT>::g
     child_node = search_heap.back ().node;
     new_key = search_heap.back ().key;
 
-    if (tree_depth < this->octree_depth_)
+    if (child_node->getNodeType() == BRANCH_NODE && tree_depth < this->octree_depth_)
     {
       // we have not reached maximum tree depth
       smallest_squared_dist = getKNearestNeighborRecursive (point, K, static_cast<const BranchNode*> (child_node), new_key, tree_depth + 1,
                                                             smallest_squared_dist, point_candidates);
     }
-    else
+    else if (child_node->getNodeType() == LEAF_NODE)
     {
       // we reached leaf node level
 
@@ -354,7 +354,7 @@ pcl::octree::OctreePointCloudSearch<PointT, LeafContainerT, BranchContainerT>::g
         <= voxel_squared_diameter / 4.0 + radiusSquared + sqrt (voxel_squared_diameter * radiusSquared))
     {
 
-      if (tree_depth < this->octree_depth_)
+      if (child_node->getNodeType() == BRANCH_NODE && tree_depth < this->octree_depth_)
       {
         // we have not reached maximum tree depth
         getNeighborsWithinRadiusRecursive (point, radiusSquared, static_cast<const BranchNode*> (child_node), new_key, tree_depth + 1,
@@ -362,7 +362,7 @@ pcl::octree::OctreePointCloudSearch<PointT, LeafContainerT, BranchContainerT>::g
         if (max_nn != 0 && k_indices.size () == static_cast<unsigned int> (max_nn))
           return;
       }
-      else
+      else if (child_node->getNodeType() == LEAF_NODE)
       {
         // we reached leaf node level
 
