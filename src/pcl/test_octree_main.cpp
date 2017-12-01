@@ -60,5 +60,12 @@ int main()
 	idxs.clear(); dsts.clear();
 	octree.nearestKSearch(50, 50, idxs, dsts);
 
+	int ret_idx; float ret_dst;
+	octree.approxNearestSearch(5, ret_idx, ret_dst);
+
+	idxs.clear();
+	PointXYZ bmin(0, 0, 0);
+	PointXYZ bmax(500, 500, 500);
+	octree.boxSearch(bmin, bmax, idxs);
 	return 0;
 }

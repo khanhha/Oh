@@ -61,6 +61,21 @@ cdef class OctreePointCloudSearch(OctreePointCloud):
         self._nearest_k(pc, index, k, ind, sqdist)
         return ind, sqdist
 
+    def approx_nearest_search(self, point):
+        cdef int ret_idx = -1
+        cdef float ret_dst = 0
+        (<pcloct.OctreePointCloudSearch_t*>self.me).approxNearestSearch(to_point_t(point), ret_idx, ret_dst)
+        return ret_idx, ret_dst
+
+    def box_search(self, b_min, b_max):
+        cdef vector[int] k_indices
+        cdef int k = (<pcloct.OctreePointCloudSearch_t*>self.me).boxSearch(to_point_t(b_min), to_point_t(b_max), k_indices)
+        cdef cnp.ndarray[float] np_k_sqr_distances = np.zeros(k, dtype=np.float32)
+        cdef cnp.ndarray[int] np_k_indices = np.zeros(k, dtype=np.int32)
+        for i in range(k):
+            np_k_indices[i] = k_indices[i]
+        return np_k_indices
+
     @cython.boundscheck(False)
     cdef void _nearest_k(self, PointCloud pc, int index, int k,
                          cnp.ndarray[ndim=1, dtype=int, mode='c'] ind,
@@ -133,25 +148,16 @@ cdef class OctreePointCloudSearch(OctreePointCloud):
 
     # Voxel Search
     ### 
-    def VoxelSearch (self, PointCloud pc):
+    def voxel_search(self, point):
         """
         Search for all neighbors of query point that are within a given voxel.
         
         Returns: (v_indices)
         """
         cdef vector[int] v_indices
-        # cdef bool isVexelSearch = (<pcloct.OctreePointCloudSearch_t*>self.me).voxelSearch(pc.thisptr()[0], v_indices)
-        # self._VoxelSearch(pc, v_indices)
-        result = pc.to_array()
-        cdef cpp.PointXYZ point
-        point.x = result[0, 0]
-        point.y = result[0, 1]
-        point.z = result[0, 2]
-        
-        print ('VoxelSearch at (' + str(point.x) + ' ' + str(point.y) + ' ' + str(point.z) + ')')
-        
+
         # print('before v_indices count = ' + str(v_indices.size()))
-        self._VoxelSearch(point, v_indices)
+        self._VoxelSearch(to_point_t(point), v_indices)
         v = v_indices.size()
         # print('after v_indices count = ' + str(v))
         
@@ -314,7 +320,6 @@ cdef class OctreePointCloudSearch_PointXYZI(OctreePointCloud_PointXYZI):
         """
         Add points from input point cloud to octree.
         """
-        print("Hello Khanh")
         self.me2.addPointsFromInputCloud()
 
     def is_voxel_occupied_at_point(self, point):

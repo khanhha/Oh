@@ -248,9 +248,9 @@ namespace pcl
          * \param[out] k_indices the resultant point indices
          * \return number of points found within search area
          */
-        int
-        boxSearch (const Eigen::Vector3f &min_pt, const Eigen::Vector3f &max_pt, std::vector<int> &k_indices) const;
-
+		int
+		boxSearch(const PointT &min_pt, const PointT &max_pt, std::vector<int> &k_indices) const;
+     
       protected:
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Octree-based search routines & helpers

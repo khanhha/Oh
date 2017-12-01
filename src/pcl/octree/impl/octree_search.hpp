@@ -187,8 +187,8 @@ pcl::octree::OctreePointCloudSearch<PointT, LeafContainerT, BranchContainerT>::r
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 template<typename PointT, typename LeafContainerT, typename BranchContainerT> int
-pcl::octree::OctreePointCloudSearch<PointT, LeafContainerT, BranchContainerT>::boxSearch (const Eigen::Vector3f &min_pt,
-                                                                        const Eigen::Vector3f &max_pt,
+pcl::octree::OctreePointCloudSearch<PointT, LeafContainerT, BranchContainerT>::boxSearch (const PointT &min_pt,
+                                                                        const PointT &max_pt,
                                                                         std::vector<int> &k_indices) const
 {
 
@@ -197,7 +197,7 @@ pcl::octree::OctreePointCloudSearch<PointT, LeafContainerT, BranchContainerT>::b
 
   k_indices.clear ();
 
-  boxSearchRecursive (min_pt, max_pt, this->root_node_, key, 1, k_indices);
+  boxSearchRecursive (min_pt.getVector3fMap(), max_pt.getVector3fMap(), this->root_node_, key, 1, k_indices);
 
   return (static_cast<int> (k_indices.size ()));
 
@@ -452,13 +452,13 @@ pcl::octree::OctreePointCloudSearch<PointT, LeafContainerT, BranchContainerT>::a
 
   child_node = this->getBranchChildPtr (*node, min_child_idx);
 
-  if (tree_depth < this->octree_depth_)
+  if (tree_depth < this->octree_depth_ && child_node->getNodeType() == BRANCH_NODE)
   {
     // we have not reached maximum tree depth
     approxNearestSearchRecursive (point, static_cast<const BranchNode*> (child_node), minChildKey, tree_depth + 1, result_index,
                                   sqr_distance);
   }
-  else
+  else if (child_node->getNodeType() == LEAF_NODE)
   {
     // we reached leaf node level
 
@@ -542,12 +542,12 @@ pcl::octree::OctreePointCloudSearch<PointT, LeafContainerT, BranchContainerT>::b
             (lower_voxel_corner (2) > max_pt (2)) || (min_pt (2) > upper_voxel_corner(2)) ) )
     {
 
-      if (tree_depth < this->octree_depth_)
+      if (tree_depth < this->octree_depth_ && child_node->getNodeType() == BRANCH_NODE)
       {
         // we have not reached maximum tree depth
         boxSearchRecursive (min_pt, max_pt, static_cast<const BranchNode*> (child_node), new_key, tree_depth + 1, k_indices);
       }
-      else
+      else if (child_node->getNodeType() == LEAF_NODE)
       {
         // we reached leaf node level
         size_t i;

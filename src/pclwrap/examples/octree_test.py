@@ -34,17 +34,19 @@ octreeNormal.add_points_from_input_cloud()
 searchPoint = cloudpoint[50]
 [ind, sqdist] = octreeNormal.radius_search(searchPoint, 30, 20)
 
+# nearest k search
 [ind_1, sqdist_1] = octreeNormal.nearest_k_search_for_a_point(searchPoint, 20)
 
-RAND_MAX = 1024.0
-searchPoint = pcl.PointCloud()
-searchPoints = np.zeros((1, 3), dtype=np.float32)
-searchPoints[0][0] = 1024 * random.random () / (RAND_MAX + 1.0)
-searchPoints[0][1] = 1024 * random.random () / (RAND_MAX + 1.0)
-searchPoints[0][2] = 1024 * random.random () / (RAND_MAX + 1.0)
-searchPoint.from_array(searchPoints)
+# nearest point
+[idx_2, dst_2] = octreeNormal.approx_nearest_search(cloudpoint[50]);
+assert idx_2 == 50
 
-ind = octreeNormal.VoxelSearch(searchPoint)
+# bounding box search
+[bmin, bmax] = octreeNormal.get_bounding_box()
+idx_3 = octreeNormal.box_search(bmin, bmax)
+
+# voxel search
+ind = octreeNormal.voxel_search(searchPoint)
 
 print ('Neighbors within voxel search at (' + str(searchPoint[0][0]) + ' ' + str(searchPoint[0][1]) + ' ' + str(searchPoint[0][2]) + ')')
 for i in range(0, ind.size):

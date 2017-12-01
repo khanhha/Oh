@@ -53,6 +53,11 @@ cdef class OctreePointCloud:
     #     """
     #     self.me.addPointsFromInputCloud()
 
+    def get_bounding_box(self):
+        cdef double minx = -1, miny = -1, minz= -1, maxx = -1, maxy = -1, maxz = -1
+        self.me.getBoundingBox(minx, miny, minz, maxx, maxy, maxz)
+        return [minx, miny, minz],[maxx, maxy, maxz]
+
     def delete_tree(self):
         """
         Delete the octree structure and its leaf nodes.
