@@ -4,7 +4,7 @@ import pcl
 from objsimple2 import objreader
 
 # load point and normals
-reader = objreader.read('G:\\Projects\\Oh\\data\\test_data\\lucy_none-Slice-55_center_vn_normal.obj')
+reader = objreader.read('.\\lucy_none-Slice-55_center_vn_normal.obj')
 points = np.zeros((len(reader.vv), 3), dtype=np.float32)
 normals = np.zeros((len(reader.vv),4), dtype=np.float32)
 for v, vdata in enumerate(reader.vv):
@@ -48,7 +48,7 @@ idx_3 = octreeNormal.box_search(bmin, bmax)
 # voxel search
 ind = octreeNormal.voxel_search(searchPoint)
 
-print ('Neighbors within voxel search at (' + str(searchPoint[0][0]) + ' ' + str(searchPoint[0][1]) + ' ' + str(searchPoint[0][2]) + ')')
+print ('Neighbors within voxel search at (' + str(searchPoint[0]) + ' ' + str(searchPoint[1]) + ' ' + str(searchPoint[2]) + ')')
 for i in range(0, ind.size):
     print ('index = ' + str(ind[i]))
     print ('(' + str(cloudpoint[ind[i]][0]) + ' ' + str(cloudpoint[ind[i]][1]) + ' ' + str(cloudpoint[ind[i]][2]))
