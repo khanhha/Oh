@@ -32,7 +32,7 @@ void load_pcl(const string &filename, const string &basepath, PointCloud<PointXY
 
 int main()
 {
-	string filename = "lucy_none-Slice-55_center_vn_normal.obj";
+	string filename = "normal_lucy_none-Slice-55_center_vn.obj";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
 
 	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
@@ -67,5 +67,15 @@ int main()
 	PointXYZ bmin(0, 0, 0);
 	PointXYZ bmax(500, 500, 500);
 	octree.boxSearch(bmin, bmax, idxs);
+
+	std::vector<octree::OctreeKey> keys;
+	std::vector<int> depths;
+	octree.getAllLeafKeys(keys, depths);
+
+	
+	std::vector<octree::OctreeKey> keys_1;
+	std::vector<int> depths_1;
+	octree.getOctreeKeysAtMaxDepth(4, keys_1, depths_1);
+
 	return 0;
 }

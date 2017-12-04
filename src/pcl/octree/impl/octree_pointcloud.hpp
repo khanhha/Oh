@@ -839,6 +839,37 @@ pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>
   return (voxel_count);
 }
 
+template<typename PointT, typename LeafContainerT /*= OctreeContainerPointIndices*/,
+	typename BranchContainerT /*= OctreeContainerEmpty*/,
+	typename OctreeT /*= OctreeBase<LeafContainerT, BranchContainerT> */>
+	int pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::getAllLeafKeys(std::vector<OctreeKey> &keys, std::vector<int> &depths) const
+{
+	pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::LeafNodeIterator tree_it_end = leaf_cend();
+	keys.clear(); depths.clear();
+	for (auto tree_it = this->leaf_cbegin(); tree_it != tree_it_end; ++tree_it)
+	{
+		keys.push_back(tree_it.getCurrentOctreeKey());
+		depths.push_back(tree_it.getCurrentOctreeDepth());
+	}
+
+	return keys.size();
+}
+
+template<typename PointT, typename LeafContainerT /*= OctreeContainerPointIndices*/,
+	typename BranchContainerT /*= OctreeContainerEmpty*/,
+	typename OctreeT /*= OctreeBase<LeafContainerT, BranchContainerT> */>
+	int pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::getOctreeKeysAtMaxDepth(unsigned int depth, std::vector<OctreeKey> &keys, std::vector<int> &depths) const
+{
+	pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::ConstIterator tree_it_end = this->cend();
+	keys.clear();
+	for (auto tree_it = this->cbegin(depth); tree_it != tree_it_end; ++tree_it)
+	{
+		keys.push_back(tree_it.getCurrentOctreeKey());
+		depths.push_back(tree_it.getCurrentOctreeDepth());
+	}
+	return keys.size();
+}
+
 #define PCL_INSTANTIATE_OctreePointCloudSingleBufferWithLeafDataTVector(T) template class PCL_EXPORTS pcl::octree::OctreePointCloud<T, pcl::octree::OctreeContainerPointIndices, pcl::octree::OctreeContainerEmpty, pcl::octree::OctreeBase<pcl::octree::OctreeContainerPointIndices, pcl::octree::OctreeContainerEmpty > >;
 #define PCL_INSTANTIATE_OctreePointCloudDoubleBufferWithLeafDataTVector(T) template class PCL_EXPORTS pcl::octree::OctreePointCloud<T, pcl::octree::OctreeContainerPointIndices, pcl::octree::OctreeContainerEmpty, pcl::octree::Octree2BufBase<pcl::octree::OctreeContainerPointIndices, pcl::octree::OctreeContainerEmpty > >;
 

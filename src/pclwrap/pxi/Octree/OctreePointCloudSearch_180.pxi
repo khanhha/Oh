@@ -70,7 +70,6 @@ cdef class OctreePointCloudSearch(OctreePointCloud):
     def box_search(self, b_min, b_max):
         cdef vector[int] k_indices
         cdef int k = (<pcloct.OctreePointCloudSearch_t*>self.me).boxSearch(to_point_t(b_min), to_point_t(b_max), k_indices)
-        cdef cnp.ndarray[float] np_k_sqr_distances = np.zeros(k, dtype=np.float32)
         cdef cnp.ndarray[int] np_k_indices = np.zeros(k, dtype=np.int32)
         for i in range(k):
             np_k_indices[i] = k_indices[i]

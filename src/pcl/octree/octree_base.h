@@ -82,25 +82,37 @@ namespace pcl
         typedef OctreeDepthFirstIterator<OctreeT> Iterator;
         typedef const OctreeDepthFirstIterator<OctreeT> ConstIterator;
         Iterator begin(unsigned int max_depth_arg = 0) {return Iterator(this, max_depth_arg);};
-        const Iterator end() {return Iterator();};
+		const Iterator end() { return Iterator(); };
+		ConstIterator cbegin(unsigned int max_depth_arg = 0) const { return ConstIterator(this, max_depth_arg); };
+		ConstIterator cend() const { return ConstIterator(); };
+
 
         // Octree leaf node iterators
         typedef OctreeLeafNodeIterator<OctreeT> LeafNodeIterator;
         typedef const OctreeLeafNodeIterator<OctreeT> ConstLeafNodeIterator;
         LeafNodeIterator leaf_begin(unsigned int max_depth_arg = 0) {return LeafNodeIterator(this, max_depth_arg);};
-        const LeafNodeIterator leaf_end() {return LeafNodeIterator();};
+		const LeafNodeIterator leaf_end() { return LeafNodeIterator(); };
+		ConstLeafNodeIterator leaf_cbegin(unsigned int max_depth_arg = 0) const { return ConstLeafNodeIterator(this, max_depth_arg); };
+		ConstLeafNodeIterator leaf_cend() const { return ConstLeafNodeIterator(); };
+
 
         // Octree depth-first iterators
         typedef OctreeDepthFirstIterator<OctreeT> DepthFirstIterator;
         typedef const OctreeDepthFirstIterator<OctreeT> ConstDepthFirstIterator;
         DepthFirstIterator depth_begin(unsigned int max_depth_arg = 0) {return DepthFirstIterator(this, max_depth_arg);};
-        const DepthFirstIterator depth_end() {return DepthFirstIterator();};
+		const DepthFirstIterator depth_end() { return DepthFirstIterator(); };
+		ConstDepthFirstIterator depth_cbegin(unsigned int max_depth_arg = 0)  const {return ConstDepthFirstIterator(this, max_depth_arg);};
+		ConstDepthFirstIterator depth_cend() const { return ConstDepthFirstIterator(); };
 
         // Octree breadth-first iterators
         typedef OctreeBreadthFirstIterator<OctreeT> BreadthFirstIterator;
         typedef const OctreeBreadthFirstIterator<OctreeT> ConstBreadthFirstIterator;
         BreadthFirstIterator breadth_begin(unsigned int max_depth_arg = 0) {return BreadthFirstIterator(this, max_depth_arg);};
         const BreadthFirstIterator breadth_end() {return BreadthFirstIterator();};
+
+		ConstBreadthFirstIterator breadth_cbegin(unsigned int max_depth_arg = 0) const { return ConstBreadthFirstIterator(this, max_depth_arg);};
+		ConstBreadthFirstIterator breadth_cend() const { return ConstBreadthFirstIterator(); };
+
 
 
         /** \brief Empty constructor. */

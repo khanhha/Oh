@@ -389,12 +389,16 @@ namespace pcl
               iterator.getCurrentOctreeDepth (), min_pt, max_pt);
         }
 
+		int getOctreeKeysAtMaxDepth(unsigned int depth, std::vector<OctreeKey> &keys, std::vector<int> &depths) const;
+
+		int getAllLeafKeys(std::vector<OctreeKey> &keys, std::vector<int> &depths) const;
+
         /** \brief Enable dynamic octree structure
          *  \note Leaf nodes are kept as close to the root as possible and are only expanded if the number of DataT objects within a leaf node exceeds a fixed limit.
          *  \param maxObjsPerLeaf: maximum number of DataT objects per leaf
          * */
         inline void
-        enableDynamicDepth ( size_t maxObjsPerLeaf )
+        enableDynamicDepth ( size_t maxObjsPerLeaf)
         {
           assert(this->leaf_count_==0);
           max_objs_per_leaf_ = maxObjsPerLeaf;
@@ -566,6 +570,8 @@ namespace pcl
          * **/
         std::size_t max_objs_per_leaf_;
     };
+
+
 
   }
 }

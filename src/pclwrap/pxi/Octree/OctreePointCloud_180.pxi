@@ -1,8 +1,21 @@
 # -*- coding: utf-8 -*-
 cimport pcl_defs as cpp
 cimport pcl_octree_180 as pcloct
+import numpy as np
+cimport numpy as cnp
 
 cimport eigen as eig
+
+# cdef class OctreeKey:
+#     property x:
+#         """ property containing the width of the point cloud """
+#         def __get__(self): return self.thisptr().x
+#     property y:
+#         """ property containing the height of the point cloud """
+#         def __get__(self): return self.thisptr().y
+#     property z:
+#         """ property containing the height of the point cloud """
+#         def __get__(self): return self.thisptr().z
 
 cdef class OctreePointCloud:
     """
@@ -89,6 +102,26 @@ cdef class OctreePointCloud:
     #     # mpcl_deleteVoxelAtPoint(self.me, to_point_t(point))
     #     # mpcl_deleteVoxelAtPoint(deref(self.me), to_point_t(point))
 
+    def get_all_leaf_keys(self):
+
+        cdef vector[pcloct.OctreeKey] keys
+        cdef vector[int] depths
+
+        self.me.getAllLeafKeys(keys, depths)
+
+        cdef int len = keys.size()
+
+        ret_keys = np.zeros((len, 4), dtype=np.int32)
+        ret_depths = np.zeros(len, dtype=np.int32)
+
+        for i in range(len):
+            ret_keys[i][0] = keys[i].x
+            ret_keys[i][1] = keys[i].y
+            ret_keys[i][2] = keys[i].z
+
+            ret_depths[i] = depths[i]
+
+        return ret_keys, ret_depths
 
 cdef class OctreePointCloud_PointXYZI:
     """

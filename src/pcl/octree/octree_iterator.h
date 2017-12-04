@@ -97,7 +97,7 @@ namespace pcl
          * \param[in] max_depth_arg Depth limitation during traversal
          */
         explicit
-        OctreeIteratorBase (OctreeT* octree_arg, unsigned int max_depth_arg = 0) :
+        OctreeIteratorBase (const OctreeT* octree_arg, unsigned int max_depth_arg = 0) :
             octree_ (octree_arg), current_state_(0), max_octree_depth_(max_depth_arg)
         {
           this->reset ();
@@ -347,7 +347,7 @@ namespace pcl
 
       protected:
         /** \brief Reference to octree class. */
-        OctreeT* octree_;
+        const OctreeT* octree_;
 
         /** \brief Pointer to current iterator state. */
         IteratorState* current_state_;
@@ -382,7 +382,7 @@ namespace pcl
          * \param[in] max_depth_arg Depth limitation during traversal
          */
         explicit
-        OctreeDepthFirstIterator (OctreeT* octree_arg, unsigned int max_depth_arg = 0);
+        OctreeDepthFirstIterator (const OctreeT* octree_arg, unsigned int max_depth_arg = 0);
 
         /** \brief Empty deconstructor. */
         virtual
@@ -468,7 +468,7 @@ namespace pcl
          * \param[in] max_depth_arg Depth limitation during traversal
          */
         explicit
-        OctreeBreadthFirstIterator (OctreeT* octree_arg, unsigned int max_depth_arg = 0);
+        OctreeBreadthFirstIterator (const OctreeT* octree_arg, unsigned int max_depth_arg = 0);
 
         /** \brief Empty deconstructor. */
         virtual
@@ -552,7 +552,7 @@ namespace pcl
          * \param[in] max_depth_arg Depth limitation during traversal
          */
         explicit
-        OctreeLeafNodeIterator (OctreeT* octree_arg, unsigned int max_depth_arg = 0) :
+        OctreeLeafNodeIterator (const OctreeT* octree_arg, unsigned int max_depth_arg = 0) :
             OctreeDepthFirstIterator<OctreeT> (octree_arg, max_depth_arg)
         {
           reset ();

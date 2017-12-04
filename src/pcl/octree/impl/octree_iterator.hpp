@@ -54,7 +54,7 @@ namespace pcl
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     template<typename OctreeT>
-    OctreeDepthFirstIterator<OctreeT>::OctreeDepthFirstIterator (OctreeT* octree_arg, unsigned int max_depth_arg) :
+    OctreeDepthFirstIterator<OctreeT>::OctreeDepthFirstIterator (const OctreeT* octree_arg, unsigned int max_depth_arg) :
         OctreeIteratorBase<OctreeT> (octree_arg, max_depth_arg), stack_ ()
     {
       // initialize iterator
@@ -188,7 +188,7 @@ namespace pcl
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     template<typename OctreeT>
-    OctreeBreadthFirstIterator<OctreeT>::OctreeBreadthFirstIterator (OctreeT* octree_arg, unsigned int max_depth_arg) :
+    OctreeBreadthFirstIterator<OctreeT>::OctreeBreadthFirstIterator (const OctreeT* octree_arg, unsigned int max_depth_arg) :
         OctreeIteratorBase<OctreeT> (octree_arg, max_depth_arg), FIFO_ ()
     {
       OctreeIteratorBase<OctreeT>::reset ();
