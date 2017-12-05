@@ -7,3 +7,8 @@ Install steps
 6. run the command: python setup.py install
 7. run the example src/pclwrap/octree_test.py
 
+
+Install VTK for octree visualization
+ - download VTK 8.0.1 from https://www.lfd.uci.edu/~gohlke/pythonlibs/
+ - guide to install vtk using whl file:  https://stackoverflow.com/questions/27885397/how-do-i-install-a-python-package-with-a-whl-file
+
