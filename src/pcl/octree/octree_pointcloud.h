@@ -406,6 +406,34 @@ namespace pcl
           this->dynamic_depth_enabled_ = static_cast<bool> (max_objs_per_leaf_>0);
         }
 
+		/** \brief Generate a point at center of leaf node voxel
+		* \param[in] key_arg octree key addressing a leaf node.
+		* \param[out] point_arg write leaf node voxel center to this point reference
+		*/
+		void
+			genLeafNodeCenterFromOctreeKey(const OctreeKey & key_arg,
+				PointT& point_arg) const;
+
+		/** \brief Generate a point at center of octree voxel at given tree level
+		* \param[in] key_arg octree key addressing an octree node.
+		* \param[in] tree_depth_arg octree depth of query voxel
+		* \param[out] point_arg write leaf node center point to this reference
+		*/
+		void
+			genVoxelCenterFromOctreeKey(const OctreeKey & key_arg,
+				unsigned int tree_depth_arg, PointT& point_arg) const;
+
+		/** \brief Generate bounds of an octree voxel using octree key and tree depth arguments
+		* \param[in] key_arg octree key addressing an octree node.
+		* \param[in] tree_depth_arg octree depth of query voxel
+		* \param[out] min_pt lower bound of voxel
+		* \param[out] max_pt upper bound of voxel
+		*/
+		void
+			genVoxelBoundsFromOctreeKey(const OctreeKey & key_arg,
+				unsigned int tree_depth_arg, Eigen::Vector3f &min_pt,
+				Eigen::Vector3f &max_pt) const;
+
 
       protected:
 
@@ -497,34 +525,6 @@ namespace pcl
          */
         virtual bool
         genOctreeKeyForDataT (const int& data_arg, OctreeKey & key_arg) const;
-
-        /** \brief Generate a point at center of leaf node voxel
-         * \param[in] key_arg octree key addressing a leaf node.
-         * \param[out] point_arg write leaf node voxel center to this point reference
-         */
-        void
-        genLeafNodeCenterFromOctreeKey (const OctreeKey & key_arg,
-            PointT& point_arg) const;
-
-        /** \brief Generate a point at center of octree voxel at given tree level
-         * \param[in] key_arg octree key addressing an octree node.
-         * \param[in] tree_depth_arg octree depth of query voxel
-         * \param[out] point_arg write leaf node center point to this reference
-         */
-        void
-        genVoxelCenterFromOctreeKey (const OctreeKey & key_arg,
-            unsigned int tree_depth_arg, PointT& point_arg) const;
-
-        /** \brief Generate bounds of an octree voxel using octree key and tree depth arguments
-         * \param[in] key_arg octree key addressing an octree node.
-         * \param[in] tree_depth_arg octree depth of query voxel
-         * \param[out] min_pt lower bound of voxel
-         * \param[out] max_pt upper bound of voxel
-         */
-        void
-        genVoxelBoundsFromOctreeKey (const OctreeKey & key_arg,
-            unsigned int tree_depth_arg, Eigen::Vector3f &min_pt,
-            Eigen::Vector3f &max_pt) const;
 
         /** \brief Recursively search the tree for all leaf nodes and return a vector of voxel centers.
          * \param[in] node_arg current octree node to be explored

@@ -7,15 +7,13 @@ cimport numpy as cnp
 cimport eigen as eig
 
 # cdef class OctreeKey:
-#     property x:
-#         """ property containing the width of the point cloud """
-#         def __get__(self): return self.thisptr().x
-#     property y:
-#         """ property containing the height of the point cloud """
-#         def __get__(self): return self.thisptr().y
-#     property z:
-#         """ property containing the height of the point cloud """
-#         def __get__(self): return self.thisptr().z
+#     cdef unsigned int x
+#     cdef unsigned int y
+#     cdef unsigned int z
+#     def __init__(self, unsigned int k0, unsigned int k1, unsigned int k2):
+#         self.x = k0
+#         self.y = k1
+#         self.z = k2
 
 cdef class OctreePointCloud:
     """
@@ -111,7 +109,7 @@ cdef class OctreePointCloud:
 
         cdef int len = keys.size()
 
-        ret_keys = np.zeros((len, 4), dtype=np.int32)
+        ret_keys = np.zeros((len, 3), dtype=np.int32)
         ret_depths = np.zeros(len, dtype=np.int32)
 
         for i in range(len):
@@ -122,6 +120,23 @@ cdef class OctreePointCloud:
             ret_depths[i] = depths[i]
 
         return ret_keys, ret_depths
+
+    def gen_voxel_center_from_octree_key(self, key, unsigned int depth):
+        cdef pcloct.OctreeKey key_ = pcloct.OctreeKey(np.uint(key[0]), np.uint(key[1]), np.uint(key[2]))
+        cdef cpp.PointXYZ p
+
+        self.me.genVoxelCenterFromOctreeKey(key_, depth, p)
+
+        return [p.x, p.y, p.z]
+
+    def gen_voxel_bounds_from_octree_key(self, key, depth):
+        cdef pcloct.OctreeKey key_ = pcloct.OctreeKey(np.int(key[0]), np.int(key[1]), np.int(key[2]))
+        cdef eig.Vector3f bmin
+        cdef eig.Vector3f bmax
+
+        self.me.genVoxelBoundsFromOctreeKey(key_, depth, bmin, bmax)
+
+        return [bmin.data()[0], bmin.data()[1], bmin.data()[2]], [bmax.data()[0], bmax.data()[1], bmax.data()[2]]
 
 cdef class OctreePointCloud_PointXYZI:
     """

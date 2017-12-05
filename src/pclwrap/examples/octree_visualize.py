@@ -40,3 +40,14 @@ octreeNormal.add_points_from_input_cloud()
 [keys, depths] = octreeNormal.get_all_leaf_keys()
 for k in range(len(keys)):
     print('{} {} {} {}'.format(depths[k], keys[k][0], keys[k][1], keys[k][2]))
+
+k0 = keys[10]
+d0 = depths[10]
+vox = octreeNormal.gen_voxel_center_from_octree_key(k0,d0)
+
+[bmin, bmax] = octreeNormal.gen_voxel_bounds_from_octree_key(k0, d0)
+
+print(k0[0])
+
+
+
