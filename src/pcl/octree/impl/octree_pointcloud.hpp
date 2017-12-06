@@ -41,6 +41,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <fstream>
 #include <pcl/common/common.h>
 #include <pcl/octree/impl/octree_base.hpp>
 #include <pcl/common/point_tests.h>
@@ -846,9 +847,11 @@ template<typename PointT, typename LeafContainerT /*= OctreeContainerPointIndice
 {
 	pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::LeafNodeIterator tree_it_end = leaf_cend();
 	keys.clear(); depths.clear();
+	
+
 	for (auto tree_it = this->leaf_cbegin(); tree_it != tree_it_end; ++tree_it)
 	{
-#if 1
+#if 
 		OctreeKey it_key = tree_it.getCurrentOctreeKey();
 		OctreeKey it_key_dyn = tree_it.getCurrentOctreeKeySearch();
 		auto leaf = static_cast<LeafNode*>(tree_it.getCurrentOctreeNode());
@@ -864,6 +867,12 @@ template<typename PointT, typename LeafContainerT /*= OctreeContainerPointIndice
 		keys.push_back(tree_it.getCurrentOctreeKey());
 		depths.push_back(tree_it.getCurrentOctreeDepth());
 	}
+#if 0
+	std::ofstream of;
+	of.open("G:\\Projects\\Oh\\data\\leaf_size.txt");
+	of << keys.size() << std::endl;
+	of.close();
+#endif
 
 	return keys.size();
 }

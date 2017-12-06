@@ -69,13 +69,7 @@ def vtk_build_box_actor(bounds):
 
     for i in range(0, nbox):
         for e in range(0,12):
-            #line = vtk.vtkLine()
-            #line.GetPointIds().SetId(0, i*8 + box_edges[e][0])
-            #line.GetPointIds().SetId(1, i*8 + box_edges[e][1])
-            #lines.InsertNextCell(line)
             lines.InsertNextCell(2, (i*8 + box_edges[e][0], i*8 + box_edges[e][1]))
-            #vertices.InsertCellPoint(i*8 + box_edges[e][0])
-            #vertices.InsertCellPoint(i*8 + box_edges[e][1])
 
     vtk_poly = vtk.vtkPolyData()
     vtk_poly.SetPoints(vtk_points)
@@ -158,11 +152,11 @@ cloudnormal = pcl.PointCloud_Normal()
 cloudnormal.from_array(normals)
 
 # build tree based on normal and max per leaf node
-octreeNormal = pcl.OctreePointCloudNormal(0.1)
+octreeNormal = pcl.OctreePointCloudNormal(10)
 octreeNormal.set_input_cloud(cloudpoint)
 octreeNormal.set_input_normal_cloud(cloudnormal)
-octreeNormal.enable_dynamic_depth(100)
 octreeNormal.set_leaf_normal_threshold(0.8)
+octreeNormal.enable_dynamic_depth(100)
 octreeNormal.add_points_from_input_cloud()
 
 vtk_leaf_center_actor = vtk_build_octree_leaf_center_actor(octreeNormal)
@@ -174,13 +168,14 @@ vtk_leaf_box_actor.GetProperty().SetColor(0.9, 0.5, 0.3)
 vtk_leaf_box_actor.GetProperty().SetLineWidth(1)
 
 vtk_cloud_point_actor = vtk_build_point_cloud_actor(cloudpoint)
+vtk_cloud_point_actor.GetProperty().SetPointSize(3)
 
 camera = vtk.vtkCamera()
 camera.SetPosition(1, 1, 1)
 camera.SetFocalPoint(0, 0, 0)
 
 renderer = vtk.vtkRenderer()
-renderer.AddActor(vtk_leaf_center_actor)
+#renderer.AddActor(vtk_leaf_center_actor)
 renderer.AddActor(vtk_cloud_point_actor)
 renderer.AddActor(vtk_leaf_box_actor)
 renderer.SetActiveCamera(camera)

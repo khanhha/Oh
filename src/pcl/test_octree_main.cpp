@@ -32,7 +32,7 @@ void load_pcl(const string &filename, const string &basepath, PointCloud<PointXY
 
 int main()
 {
-	string filename = "normal_lucy_none-Slice-55_center_vn.obj";
+	string filename = "normal_lucy_none-Slice-54_center_vn.obj";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
 
 	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
@@ -48,11 +48,12 @@ int main()
 	pcl::octree::OctreePointCloudNormal<pcl::PointXYZ, pcl::Normal> oc(0.1);
 	oc.setInputCloud(cloud);
 	oc.setInputNormalCloud(normal);
-	//octree.setNormalThreshold(0.8);
+	oc.setNormalThreshold(0.8);
 	oc.enableDynamicDepth(100);
 	oc.addPointsFromInputCloud();
 #endif
 
+#if 1
 	std::vector<int> idxs;
 	std::vector<float> dsts;
 	oc.radiusSearch(50, 50.0, idxs, dsts, 100);
@@ -67,6 +68,7 @@ int main()
 	PointXYZ bmin(0, 0, 0);
 	PointXYZ bmax(500, 500, 500);
 	oc.boxSearch(bmin, bmax, idxs);
+#endif
 
 	std::vector<octree::OctreeKey> keys;
 	std::vector<int> depths;
@@ -80,7 +82,7 @@ int main()
 		auto leafnode = oc.findLeaf(search_key.x, search_key.y, search_key.z);
 		size_t npoint = leafnode->getSize();
 		if (npoint == 0) {
-			int somethinewrong = 1;
+ 			int somethinewrong = 1;
 		}
 	}
 	
