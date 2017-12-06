@@ -848,9 +848,9 @@ template<typename PointT, typename LeafContainerT /*= OctreeContainerPointIndice
 	keys.clear(); depths.clear();
 	for (auto tree_it = this->leaf_cbegin(); tree_it != tree_it_end; ++tree_it)
 	{
-#if 0
+#if 1
 		OctreeKey it_key = tree_it.getCurrentOctreeKey();
-		OctreeKey it_key_dyn = tree_it.getCurrentOctreeKeyDynamicLeaf();
+		OctreeKey it_key_dyn = tree_it.getCurrentOctreeKeySearch();
 		auto leaf = static_cast<LeafNode*>(tree_it.getCurrentOctreeNode());
 		OctreeContainerPointIndices *container = static_cast<OctreeContainerPointIndices*>(leaf->getContainerPtr());
 		if (container->getSize() > 0)
@@ -861,7 +861,7 @@ template<typename PointT, typename LeafContainerT /*= OctreeContainerPointIndice
 			int stophere = 1;
 		}
 #endif
-		keys.push_back(tree_it.getCurrentOctreeKeyDynamicLeaf());
+		keys.push_back(tree_it.getCurrentOctreeKey());
 		depths.push_back(tree_it.getCurrentOctreeDepth());
 	}
 

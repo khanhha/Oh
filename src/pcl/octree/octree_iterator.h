@@ -172,7 +172,12 @@ namespace pcl
           return (current_state_->key_);
         }
 
-		inline OctreeKey getCurrentOctreeKeyDynamicLeaf () const
+		/* \brief get around method getCurrentOctreeKey
+		* in case of dynamic leaf, leaf node doesn't stay at the smallest resolution; instead, it could be the root node of the tree
+		* the key returned from getCurrentOctreeKey only works when leaf nodes are at smallest resolution.
+		* we can use the return key from this method as an input to the method findLeaf to find the corresponding leaf node
+		*/
+		inline OctreeKey getCurrentOctreeKeySearch() const
 		{
 			assert(octree_ != 0);
 			assert(current_state_ != 0);

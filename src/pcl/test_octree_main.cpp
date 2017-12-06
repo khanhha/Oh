@@ -71,10 +71,13 @@ int main()
 	std::vector<octree::OctreeKey> keys;
 	std::vector<int> depths;
 	oc.getAllLeafKeys(keys, depths);
-	for (auto it = keys.begin(); it != keys.end(); ++it)
+	int treedepth = oc.getTreeDepth();
+	for (auto i = 0; i < keys.size(); ++i)
 	{
-		octree::OctreeKey key = *it;
-		auto leafnode = oc.findLeaf(key.x, key.y, key.z);
+		octree::OctreeKey key = keys[i];
+		int leftdepth = treedepth - depths[i];
+		octree::OctreeKey search_key(key.x << leftdepth, key.y << leftdepth, key.z << leftdepth);
+		auto leafnode = oc.findLeaf(search_key.x, search_key.y, search_key.z);
 		size_t npoint = leafnode->getSize();
 		if (npoint == 0) {
 			int somethinewrong = 1;
