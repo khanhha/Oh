@@ -172,6 +172,18 @@ namespace pcl
           return (current_state_->key_);
         }
 
+		inline OctreeKey getCurrentOctreeKeyDynamicLeaf () const
+		{
+			assert(octree_ != 0);
+			assert(current_state_ != 0);
+			int left_depth = octree_->getTreeDepth() - current_state_->depth_;
+			OctreeKey key(
+				current_state_->key_.x << left_depth, 
+				current_state_->key_.y << left_depth, 
+				current_state_->key_.z << left_depth);
+			return key;
+		}
+
         /** \brief Get the current depth level of octree
          * \return depth level
          */
@@ -183,6 +195,8 @@ namespace pcl
 
           return (current_state_->depth_);
         }
+
+
 
         /** \brief Get the current octree node
          * \return pointer to current octree node

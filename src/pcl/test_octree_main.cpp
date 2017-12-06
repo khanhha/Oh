@@ -41,41 +41,49 @@ int main()
 	load_pcl(basepath+filename, basepath, cloud, normal);
 
 #if 0
-	pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree(0.1);
-	octree.setInputCloud(cloud);
-	octree.addPointsFromInputCloud();
+	pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> oc(0.1);
+	oc.setInputCloud(cloud);
+	oc.addPointsFromInputCloud();
 #else
-	pcl::octree::OctreePointCloudNormal<pcl::PointXYZ, pcl::Normal> octree(0.1);
-	octree.setInputCloud(cloud);
-	octree.setInputNormalCloud(normal);
+	pcl::octree::OctreePointCloudNormal<pcl::PointXYZ, pcl::Normal> oc(0.1);
+	oc.setInputCloud(cloud);
+	oc.setInputNormalCloud(normal);
 	//octree.setNormalThreshold(0.8);
-	octree.enableDynamicDepth(100);
-	octree.addPointsFromInputCloud();
+	oc.enableDynamicDepth(100);
+	oc.addPointsFromInputCloud();
 #endif
 
 	std::vector<int> idxs;
 	std::vector<float> dsts;
-	octree.radiusSearch(50, 50.0, idxs, dsts, 100);
+	oc.radiusSearch(50, 50.0, idxs, dsts, 100);
 	
 	idxs.clear(); dsts.clear();
-	octree.nearestKSearch(50, 50, idxs, dsts);
+	oc.nearestKSearch(50, 50, idxs, dsts);
 
 	int ret_idx; float ret_dst;
-	octree.approxNearestSearch(5, ret_idx, ret_dst);
+	oc.approxNearestSearch(5, ret_idx, ret_dst);
 
 	idxs.clear();
 	PointXYZ bmin(0, 0, 0);
 	PointXYZ bmax(500, 500, 500);
-	octree.boxSearch(bmin, bmax, idxs);
+	oc.boxSearch(bmin, bmax, idxs);
 
 	std::vector<octree::OctreeKey> keys;
 	std::vector<int> depths;
-	octree.getAllLeafKeys(keys, depths);
-
+	oc.getAllLeafKeys(keys, depths);
+	for (auto it = keys.begin(); it != keys.end(); ++it)
+	{
+		octree::OctreeKey key = *it;
+		auto leafnode = oc.findLeaf(key.x, key.y, key.z);
+		size_t npoint = leafnode->getSize();
+		if (npoint == 0) {
+			int somethinewrong = 1;
+		}
+	}
 	
 	std::vector<octree::OctreeKey> keys_1;
 	std::vector<int> depths_1;
-	octree.getOctreeKeysAtMaxDepth(4, keys_1, depths_1);
+	oc.getOctreeKeysAtMaxDepth(4, keys_1, depths_1);
 
 	return 0;
 }
