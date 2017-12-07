@@ -113,6 +113,22 @@ def vtk_build_octree_leaf_box_actor(octree):
 
     return vtk_build_box_actor(bounds)
 
+def vtk_build_octree_box_at_max_depth_actor(octree, depth, fromRootToDepth):
+    if(fromRootToDepth):
+        [keys, depths] = octreeNormal.gell_all_node_keys_at_max_depth(depth)
+    else:
+        [keys, depths] = octreeNormal.gell_all_node_keys_at_depth(depth)
+
+    nleaf = len(keys)
+    bounds = np.ndarray([nleaf, 2, 3], dtype = float)
+    for k in range(nleaf):
+        [bmin, bmax] = octree.gen_voxel_bounds_from_octree_key(keys[k], depths[k])
+        for i in range(0,3):
+            bounds[k][0][i] = bmin[i]
+            bounds[k][1][i] = bmax[i]
+
+    return vtk_build_box_actor(bounds)
+
 def vtk_build_point_cloud_actor(cloud):
     npoints = cloud.size
     points = np.ndarray([npoints, 3], dtype=float)
@@ -124,32 +140,38 @@ def vtk_build_point_cloud_actor(cloud):
 
     return vtk_build_point_actor(points)
 
+def pcl_load_point_cloud(basepath, filename):
 
+    filepath = basepath + filename
+
+    if os.path.exists(filepath) == False:
+        print('Error file does not exist: ' + filepath)
+
+    reader = objreader.read(filepath)
+    points = np.zeros((len(reader.vv), 3), dtype=np.float32)
+    normals = np.zeros((len(reader.vv), 4), dtype=np.float32)
+    for v, vdata in enumerate(reader.vv):
+        for i, scalar in enumerate(vdata):
+            points[v][i] = scalar
+
+    for n, ndata in enumerate(reader._vn):
+        for i, scalar in enumerate(ndata):
+            normals[n][i] = scalar
+        normals[n][3] = 1.0
+
+    # create point cloud cloud
+    cloudpoint = pcl.PointCloud()
+    cloudpoint.from_array(points)
+    cloudnormal = pcl.PointCloud_Normal()
+    cloudnormal.from_array(normals)
+
+    return [cloudpoint, cloudnormal]
+
+###########################################################
 basepath = 'G:\\Projects\\Oh\data\\test_data\\'
 filename = 'normal_lucy_none-Slice-54_center_vn.obj'
 
-filepath = basepath + filename
-
-if os.path.exists(filepath) == False:
-    print('Error file does not exist: ' + filepath)
-
-reader = objreader.read(filepath)
-points = np.zeros((len(reader.vv), 3), dtype=np.float32)
-normals = np.zeros((len(reader.vv), 4), dtype=np.float32)
-for v, vdata in enumerate(reader.vv):
-    for i, scalar in enumerate(vdata):
-        points[v][i] = scalar
-
-for n, ndata in enumerate(reader._vn):
-    for i, scalar in enumerate(ndata):
-        normals[n][i] = scalar
-    normals[n][3] = 1.0
-
-# create point cloud cloud
-cloudpoint = pcl.PointCloud()
-cloudpoint.from_array(points)
-cloudnormal = pcl.PointCloud_Normal()
-cloudnormal.from_array(normals)
+[cloudpoint, cloudnormal] = pcl_load_point_cloud(basepath, filename);
 
 # build tree based on normal and max per leaf node
 octreeNormal = pcl.OctreePointCloudNormal(10)
@@ -167,6 +189,10 @@ vtk_leaf_box_actor = vtk_build_octree_leaf_box_actor(octreeNormal)
 vtk_leaf_box_actor.GetProperty().SetColor(0.9, 0.5, 0.3)
 vtk_leaf_box_actor.GetProperty().SetLineWidth(1)
 
+vtk_max_depth_box_actor = vtk_build_octree_box_at_max_depth_actor(octreeNormal, 5, False);
+vtk_max_depth_box_actor.GetProperty().SetColor(0.2, 0.5, 0.3)
+vtk_max_depth_box_actor.GetProperty().SetLineWidth(1)
+
 vtk_cloud_point_actor = vtk_build_point_cloud_actor(cloudpoint)
 vtk_cloud_point_actor.GetProperty().SetPointSize(3)
 
@@ -175,9 +201,10 @@ camera.SetPosition(1, 1, 1)
 camera.SetFocalPoint(0, 0, 0)
 
 renderer = vtk.vtkRenderer()
-#renderer.AddActor(vtk_leaf_center_actor)
+renderer.AddActor(vtk_leaf_center_actor)
 renderer.AddActor(vtk_cloud_point_actor)
-renderer.AddActor(vtk_leaf_box_actor)
+#renderer.AddActor(vtk_leaf_box_actor)
+renderer.AddActor(vtk_max_depth_box_actor);
 renderer.SetActiveCamera(camera)
 renderer.ResetCamera()
 renderer.SetBackground(0, 0, 0)

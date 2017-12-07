@@ -391,6 +391,9 @@ namespace pcl
 
 		int getOctreeKeysAtMaxDepth(unsigned int depth, std::vector<OctreeKey> &keys, std::vector<int> &depths) const;
 
+		int getOctreeKeysAtDepth(unsigned int depth, std::vector<OctreeKey> &keys, std::vector<int> &depths) const;
+
+
 		int getAllLeafKeys(std::vector<OctreeKey> &keys, std::vector<int> &depths) const;
 
         /** \brief Enable dynamic octree structure

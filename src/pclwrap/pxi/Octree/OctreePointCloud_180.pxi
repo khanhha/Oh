@@ -100,6 +100,46 @@ cdef class OctreePointCloud:
     #     # mpcl_deleteVoxelAtPoint(self.me, to_point_t(point))
     #     # mpcl_deleteVoxelAtPoint(deref(self.me), to_point_t(point))
 
+    def gell_all_node_keys_at_max_depth(self, depth_arg):
+        cdef vector[pcloct.OctreeKey] keys
+        cdef vector[int] depths
+
+        self.me.getOctreeKeysAtMaxDepth(depth_arg, keys, depths)
+
+        cdef int len = keys.size()
+
+        ret_keys = np.zeros((len, 3), dtype=np.int32)
+        ret_depths = np.zeros(len, dtype=np.int32)
+
+        for i in range(len):
+            ret_keys[i][0] = keys[i].x
+            ret_keys[i][1] = keys[i].y
+            ret_keys[i][2] = keys[i].z
+
+            ret_depths[i] = depths[i]
+
+        return ret_keys, ret_depths
+
+    def gell_all_node_keys_at_depth(self, depth_arg):
+        cdef vector[pcloct.OctreeKey] keys
+        cdef vector[int] depths
+
+        self.me.getOctreeKeysAtDepth(depth_arg, keys, depths)
+
+        cdef int len = keys.size()
+
+        ret_keys = np.zeros((len, 3), dtype=np.int32)
+        ret_depths = np.zeros(len, dtype=np.int32)
+
+        for i in range(len):
+            ret_keys[i][0] = keys[i].x
+            ret_keys[i][1] = keys[i].y
+            ret_keys[i][2] = keys[i].z
+
+            ret_depths[i] = depths[i]
+
+        return ret_keys, ret_depths
+
     def get_all_leaf_keys(self):
 
         cdef vector[pcloct.OctreeKey] keys

@@ -851,7 +851,7 @@ template<typename PointT, typename LeafContainerT /*= OctreeContainerPointIndice
 
 	for (auto tree_it = this->leaf_cbegin(); tree_it != tree_it_end; ++tree_it)
 	{
-#if 
+#if 0
 		OctreeKey it_key = tree_it.getCurrentOctreeKey();
 		OctreeKey it_key_dyn = tree_it.getCurrentOctreeKeySearch();
 		auto leaf = static_cast<LeafNode*>(tree_it.getCurrentOctreeNode());
@@ -883,11 +883,29 @@ template<typename PointT, typename LeafContainerT /*= OctreeContainerPointIndice
 	int pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::getOctreeKeysAtMaxDepth(unsigned int depth, std::vector<OctreeKey> &keys, std::vector<int> &depths) const
 {
 	pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::ConstIterator tree_it_end = this->cend();
-	keys.clear();
+	keys.clear(); depths.clear();
 	for (auto tree_it = this->cbegin(depth); tree_it != tree_it_end; ++tree_it)
 	{
 		keys.push_back(tree_it.getCurrentOctreeKey());
 		depths.push_back(tree_it.getCurrentOctreeDepth());
+	}
+	return keys.size();
+}
+
+template<typename PointT, typename LeafContainerT /*= OctreeContainerPointIndices*/,
+	typename BranchContainerT /*= OctreeContainerEmpty*/,
+	typename OctreeT /*= OctreeBase<LeafContainerT, BranchContainerT> */>
+	int pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::getOctreeKeysAtDepth(unsigned int depth, std::vector<OctreeKey> &keys, std::vector<int> &depths) const
+{
+	pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::ConstIterator tree_it_end = this->cend();
+	keys.clear(); depths.clear();
+	for (auto tree_it = this->cbegin(depth); tree_it != tree_it_end; ++tree_it)
+	{
+		if (tree_it.getCurrentOctreeDepth() == depth) 
+		{
+			keys.push_back(tree_it.getCurrentOctreeKey());
+			depths.push_back(tree_it.getCurrentOctreeDepth());
+		}
 	}
 	return keys.size();
 }
