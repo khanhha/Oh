@@ -79,9 +79,13 @@ int main()
 		octree::OctreeKey key = keys[i];
 		int leftdepth = treedepth - depths[i];
 		octree::OctreeKey search_key(key.x << leftdepth, key.y << leftdepth, key.z << leftdepth);
-		auto leafnode = oc.findLeaf(search_key.x, search_key.y, search_key.z);
-		size_t npoint = leafnode->getSize();
-		if (npoint == 0) {
+		
+		PointXYZ center, center_1;
+		std::vector<int> results;
+		oc.genVoxelCenterFromOctreeKey(key, depths[i], center);
+		oc.genLeafNodeCenterFromOctreeKey(key, center_1);
+		oc.voxelSearch(center, results);
+		if (results.size() == 0) {
  			int somethinewrong = 1;
 		}
 	}

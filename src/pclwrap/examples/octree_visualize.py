@@ -10,6 +10,9 @@ config_octree_points_per_leaf = 100
 config_octree_dynamic_leaf = True
 config_octree_normal_threshold = True
 config_octree_normal_threshold_value = 0.8
+config_bsasepath = 'G:\\Projects\\Oh\data\\test_data\\'
+#config_filename = 'normal_lucy_none-Slice-54_center_vn.obj'
+config_filename = 'normal_lucy_none_repaired.obj'
 config_color_octree_depth_cube = (0.2, 0.5, 0.3)
 #
 
@@ -53,6 +56,26 @@ def pcl_build_octree(pcloud, res, dynamic, points_per_leaf, normal_split, ncloud
     ocnormal.add_points_from_input_cloud()
 
     return ocnormal
+
+def pcl_octree_infor_string(octree, cloud):
+    npoints = cloud.size
+    depth = octree.get_tree_depth()
+    nleaf = octree.get_leaf_count()
+    nbranch = octree.get_branch_count()
+
+    info = ('\n'+
+            '   number of points: ' + str(npoints) +'\n'
+            '   resolution: ' +  str(config_octree_resolution) +'\n' +
+            '   enable dynamic depth (max points per leaf): '+ str(config_octree_dynamic_leaf ) + '\n' +
+            '   points per leaf threshold: '+ str(config_octree_points_per_leaf) + '\n' +
+            '   enable normal threshold: ' +  str(config_octree_normal_threshold) +'\n' +
+            '   normal threshold: ' + str(config_octree_normal_threshold_value) +'\n' +
+            '   maxmimum tree depth: ' + str(depth) + '\n' +
+            '   number of leafs: ' + str(nleaf) +'\n' +
+            '   number of branches: ' + str(nbranch) + '\n\n'
+            )
+
+    return info
 
 def vtk_build_point_actor(points):
     npoints = len(points)
@@ -163,6 +186,28 @@ def vtk_build_octree_leaf_box_actor(octree):
 
     return vtk_build_box_actor(bounds)
 
+def vtk_build_octree_a_leaf_points_actor(octree, pcloud, leaf_idx):
+    [keys, depths] = octree.get_all_leaf_keys()
+    nleaf = len(keys)
+    if leaf_idx < nleaf:
+        c = octree.gen_voxel_center_from_octree_key(keys[leaf_idx], depths[leaf_idx])
+        vindices = octree.voxel_search(c)
+        nvertices = len(vindices)
+        if nvertices == 0:
+            print('Cloud not find points on leaf_index {}'.format(leaf_idx))
+        points = np.ndarray([nvertices, 3], dtype=float)
+        for i in range(nvertices):
+            p = pcloud[vindices[i]]
+            for k in range(0, 3):
+                points[i][k] = p[k]
+
+        actor = vtk_build_point_actor(points)
+        actor.GetProperty().SetColor(0.9, 0.9, 0.2)
+        actor.GetProperty().SetPointSize(2)
+        return actor
+    else:
+        return None
+
 def vtk_build_octree_box_at_max_depth_actor(octree, depth, fromRootToDepth):
     if(fromRootToDepth):
         [keys, depths] = octree.gell_all_node_keys_at_max_depth(depth)
@@ -190,14 +235,19 @@ def vtk_build_point_cloud_actor(cloud):
 
     return vtk_build_point_actor(points)
 
-cloudnormal = None
-cloudpoint = None
-octreeNormal = None
+cloud_normal = None
+cloud_point = None
+octree_normal = None
+octree_leaf_count = 0
+octree_depth = 0
+
+user_depth = 1
+user_a_leaf_index = 1
 
 user_view_cloud = True
+user_view_a_leaf = False
 user_view_all_leaf_center = True
 user_view_all_leaf_cube = True
-user_view_depth = 1
 user_view_node_cube_at_max_depth = True
 user_view_node_cube_at_depth = False
 
@@ -205,22 +255,33 @@ vtk_renderer = None
 vtk_renWin = None
 vtk_actor_leaf_center = None
 vtk_actor_leaf_cube = None
+vtk_actor_a_leaf = None
 vtk_actor_max_depth_cube = None
 vtk_actor_cloud_point = None
 vtk_actor_text = None
 
-def vtk_update_max_depth_cube():
+def vtk_update_actor_max_depth_cube():
     global vtk_actor_max_depth_cube
     vtk_renderer.RemoveActor(vtk_actor_max_depth_cube)
     if user_view_node_cube_at_max_depth:
-        vtk_actor_max_depth_cube = vtk_build_octree_box_at_max_depth_actor(octreeNormal, user_view_depth, True)
+        vtk_actor_max_depth_cube = vtk_build_octree_box_at_max_depth_actor(octree_normal, user_depth, True)
     elif user_view_node_cube_at_depth:
-        vtk_actor_max_depth_cube = vtk_build_octree_box_at_max_depth_actor(octreeNormal, user_view_depth, False)
+        vtk_actor_max_depth_cube = vtk_build_octree_box_at_max_depth_actor(octree_normal, user_depth, False)
 
     vtk_actor_max_depth_cube.GetProperty().SetColor(config_color_octree_depth_cube[0],
                                                     config_color_octree_depth_cube[1],
                                                     config_color_octree_depth_cube[2])
     vtk_renderer.AddActor(vtk_actor_max_depth_cube)
+
+def vtk_update_actor_a_leaf():
+    global vtk_actor_a_leaf
+    vtk_renderer.RemoveActor(vtk_actor_a_leaf)
+    vtk_actor_a_leaf = vtk_build_octree_a_leaf_points_actor(octree_normal, cloud_point, user_a_leaf_index)
+    vtk_renderer.AddActor(vtk_actor_a_leaf)
+    if user_view_a_leaf:
+        vtk_actor_a_leaf.VisibilityOn()
+    else:
+        vtk_actor_a_leaf.VisibilityOff()
 
 def vtk_text_update():
     global vtk_actor_text
@@ -228,13 +289,21 @@ def vtk_text_update():
         vtk_renderer.RemoveActor(vtk_actor_text)
 
     text = ('   press 1 : view point cloud:  ' + str(user_view_cloud) + '\n' +
-            '   press 2 : view all leaf centers:  ' + str(user_view_all_leaf_center) + '\n' +
-            '   press 3 : view all leaf cubes:  ' + str(user_view_all_leaf_cube) + '\n' +
-            '   press 4 : view all node cubes from root to depth value: ' + str(user_view_node_cube_at_max_depth) + '\n' +
-            '   press 5 : view all node cubes at depth value:  ' + str(user_view_node_cube_at_depth) + '\n' +
-            '   press 8 : decrease current depth value: ' + str(user_view_depth) + '\n' +
-            '   press 9 : increase current depth value: ' + str(user_view_depth) + '\n' +
+            '\n' +
+            '   press 2 : view points of a leaf: ' + str(user_view_a_leaf)+ '  ' + str(user_a_leaf_index) + '\n' +
+            '   press F8: increase view leaf index: ' + str(user_a_leaf_index) + '\n' +
+            '   press F9: decrease view leaf index: ' + str(user_a_leaf_index) + '\n' +
+            '\n'+
+            '   press 3 : view all leaf centers:  ' + str(user_view_all_leaf_center) + '\n' +
+            '   press 4 : view all leaf cubes:  ' + str(user_view_all_leaf_cube) + '\n' +
+            '\n' +
+            '   press 5 : view all node cubes from root to depth value: ' + str(user_view_node_cube_at_max_depth) + ' ' + str(user_depth) +'\n' +
+            '   press 6 : view all node cubes at depth value:  ' + str(user_view_node_cube_at_depth) + ' ' + str(user_depth) + '\n' +
+            '   press 8 : decrease current depth value: ' + str(user_depth) + '\n' +
+            '   press 9 : increase current depth value: ' + str(user_depth) + '\n' +
             ' ' + '\n')
+
+    text += pcl_octree_infor_string(octree_normal, cloud_point)
 
     vtk_actor_text = vtk.vtkTextActor()
     vtk_actor_text.SetInput(text)
@@ -243,8 +312,9 @@ def vtk_text_update():
 
 def vtk_ev_keypressed_handle(obj, event):
     global vtk_renderer
-    global user_view_cloud, user_view_all_leaf_center, user_view_all_leaf_cube, user_view_depth, user_view_node_cube_at_max_depth, user_view_node_cube_at_depth
+    global user_view_cloud, user_view_all_leaf_center, user_view_all_leaf_cube, user_depth, user_view_node_cube_at_max_depth, user_view_node_cube_at_depth, user_a_leaf_index, user_view_a_leaf
     key = obj.GetKeySym()
+
     if key == '1':
         user_view_cloud = not user_view_cloud
         if(user_view_cloud):
@@ -252,73 +322,97 @@ def vtk_ev_keypressed_handle(obj, event):
         else:
             vtk_actor_cloud_point.VisibilityOff()
     elif key == '2':
+       user_view_a_leaf = not user_view_a_leaf
+       user_view_cloud = False
+       vtk_actor_cloud_point.VisibilityOff()
+       if user_view_a_leaf:
+           vtk_actor_a_leaf.VisibilityOn()
+       else:
+           vtk_actor_a_leaf.VisibilityOff()
+
+    elif key == '3':
         user_view_all_leaf_center = not user_view_all_leaf_center
         if user_view_all_leaf_center:
             vtk_actor_leaf_center.VisibilityOn()
         else:
             vtk_actor_leaf_center.VisibilityOff()
-    elif key == '3':
+
+    elif key == '4':
         user_view_all_leaf_cube = not user_view_all_leaf_cube
         if user_view_all_leaf_cube:
             vtk_actor_leaf_cube.VisibilityOn()
         else:
             vtk_actor_leaf_cube.VisibilityOff()
-    elif key == '4':
+
+    elif key == '5':
         user_view_node_cube_at_max_depth = not user_view_node_cube_at_max_depth
         if user_view_node_cube_at_max_depth and user_view_node_cube_at_depth:
             user_view_node_cube_at_depth = False
 
-        vtk_update_max_depth_cube()
+        vtk_update_actor_max_depth_cube()
 
         if user_view_node_cube_at_max_depth:
             vtk_actor_max_depth_cube.VisibilityOn()
         else:
             vtk_actor_max_depth_cube.VisibilityOff()
-    elif key == '5':
+
+    elif key == '6':
         user_view_node_cube_at_depth = not user_view_node_cube_at_depth
         if user_view_node_cube_at_max_depth and user_view_node_cube_at_depth:
             user_view_node_cube_at_max_depth = False
 
-        vtk_update_max_depth_cube()
+        vtk_update_actor_max_depth_cube()
 
         if user_view_node_cube_at_depth:
             vtk_actor_max_depth_cube.VisibilityOn()
         else:
             vtk_actor_max_depth_cube.VisibilityOff()
+
     elif key == '9':
-        user_view_depth += 1
-        vtk_update_max_depth_cube()
+        user_depth += 1
+        user_depth = min(user_depth, octree_depth)
+        vtk_update_actor_max_depth_cube()
     elif key == '8':
-        user_view_depth -= 1
-        user_view_depth = max(user_view_depth, 1)
-        vtk_update_max_depth_cube()
+        user_depth -= 1
+        user_depth = max(user_depth, 1)
+        vtk_update_actor_max_depth_cube()
+    elif key == "F9":
+        user_a_leaf_index += 1
+        user_a_leaf_index = min(user_a_leaf_index, octree_leaf_count - 1)
+        vtk_update_actor_a_leaf()
+    elif key == "F8":
+        user_a_leaf_index -=1
+        user_a_leaf_index = max(user_a_leaf_index, 0)
+        vtk_update_actor_a_leaf()
 
     vtk_text_update()
     vtk_renderer.Render()
     vtk_renWin.Render()
 
 ###########################################################
-basepath = 'G:\\Projects\\Oh\data\\test_data\\'
-filename = 'normal_lucy_none-Slice-54_center_vn.obj'
 
-[cloudpoint, cloudnormal] = pcl_load_point_cloud(basepath, filename)
-octreeNormal = pcl_build_octree(cloudpoint, config_octree_resolution,
-                                config_octree_dynamic_leaf, config_octree_points_per_leaf,
-                                config_octree_normal_threshold, cloudnormal, config_octree_normal_threshold_value)
+[cloud_point, cloud_normal] = pcl_load_point_cloud(config_bsasepath, config_filename)
+octree_normal = pcl_build_octree(cloud_point, config_octree_resolution,
+                                 config_octree_dynamic_leaf, config_octree_points_per_leaf,
+                                 config_octree_normal_threshold, cloud_normal, config_octree_normal_threshold_value)
+octree_leaf_count = octree_normal.get_leaf_count()
+octree_depth = octree_normal.get_tree_depth()
 
-vtk_actor_leaf_center = vtk_build_octree_leaf_center_actor(octreeNormal)
+vtk_actor_leaf_center = vtk_build_octree_leaf_center_actor(octree_normal)
 vtk_actor_leaf_center.GetProperty().SetColor(0.9, 0.2, 0.1)
 vtk_actor_leaf_center.GetProperty().SetPointSize(4)
 
-vtk_actor_leaf_cube = vtk_build_octree_leaf_box_actor(octreeNormal)
+vtk_actor_leaf_cube = vtk_build_octree_leaf_box_actor(octree_normal)
 vtk_actor_leaf_cube.GetProperty().SetColor(0.9, 0.5, 0.3)
 vtk_actor_leaf_cube.GetProperty().SetLineWidth(1)
 
-vtk_actor_max_depth_cube = vtk_build_octree_box_at_max_depth_actor(octreeNormal, 1, True)
+vtk_actor_a_leaf = vtk_build_octree_a_leaf_points_actor(octree_normal, cloud_point, 10)
+
+vtk_actor_max_depth_cube = vtk_build_octree_box_at_max_depth_actor(octree_normal, 1, True)
 vtk_actor_max_depth_cube.GetProperty().SetColor(config_color_octree_depth_cube[0],config_color_octree_depth_cube[1], config_color_octree_depth_cube[2])
 vtk_actor_max_depth_cube.GetProperty().SetLineWidth(1)
 
-vtk_actor_cloud_point = vtk_build_point_cloud_actor(cloudpoint)
+vtk_actor_cloud_point = vtk_build_point_cloud_actor(cloud_point)
 vtk_actor_cloud_point.GetProperty().SetPointSize(2)
 
 camera = vtk.vtkCamera()
@@ -326,15 +420,20 @@ camera.SetPosition(1, 1, 1)
 camera.SetFocalPoint(0, 0, 0)
 
 vtk_renderer = vtk.vtkRenderer()
+
 vtk_renderer.AddActor(vtk_actor_leaf_center)
 vtk_renderer.AddActor(vtk_actor_cloud_point)
 vtk_renderer.AddActor(vtk_actor_leaf_cube)
 vtk_renderer.AddActor(vtk_actor_max_depth_cube)
+vtk_renderer.AddActor(vtk_actor_a_leaf)
+
 vtk_renderer.SetActiveCamera(camera)
 vtk_renderer.ResetCamera()
 vtk_renderer.SetBackground(0, 0, 0)
 
 vtk_text_update()
+vtk_update_actor_a_leaf()
+vtk_update_actor_max_depth_cube()
 
 vtk_renWin = vtk.vtkRenderWindow()
 vtk_renWin.SetSize(300, 300)
