@@ -100,6 +100,18 @@ cdef class OctreePointCloud:
     #     # mpcl_deleteVoxelAtPoint(self.me, to_point_t(point))
     #     # mpcl_deleteVoxelAtPoint(deref(self.me), to_point_t(point))
 
+    def get_leaf_count(self):
+        cdef size_t count = (<pcloct.OctreeBase_OctreeContainerPointIndices_t*>self.me).getLeafCount()
+        return count
+
+    def get_branch_count(self):
+        cdef size_t count = (<pcloct.OctreeBase_OctreeContainerPointIndices_t*>self.me).getBranchCount()
+        return count
+
+    def get_tree_depth(self):
+        cdef size_t depth = (<pcloct.OctreeBase_OctreeContainerPointIndices_t*>self.me).getTreeDepth()
+        return depth
+
     def gell_all_node_keys_at_max_depth(self, depth_arg):
         cdef vector[pcloct.OctreeKey] keys
         cdef vector[int] depths
