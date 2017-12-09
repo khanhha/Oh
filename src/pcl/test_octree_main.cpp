@@ -30,7 +30,7 @@ void load_pcl(const string &filename, const string &basepath, PointCloud<PointXY
 	}
 }
 
-int main()
+int main_()
 {
 	string filename = "normal_lucy_none-Slice-54_center_vn.obj";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
