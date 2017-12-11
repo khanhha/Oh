@@ -40,7 +40,6 @@
 #include <stdexcept>
 #include <sstream>
 
-#ifdef FULL_PCL
 #include <pcl/pcl_macros.h>
 #include <boost/current_function.hpp>
 
@@ -55,7 +54,6 @@
   s << message;                                                             \
   throw ExceptionName(s.str(), __FILE__, BOOST_CURRENT_FUNCTION, __LINE__); \
 }
-#endif
 
 namespace pcl
 {

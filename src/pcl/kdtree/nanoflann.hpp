@@ -2137,7 +2137,7 @@ namespace nanoflann
 			a[0] *= alpha; a[1] *= alpha; a[2] *= alpha;
 		}
 
-		float calcNormalDeviation(const IndexType left, const IndexType right)
+		ElementType calcNormalDeviation(const IndexType left, const IndexType right)
 		{
 			IndexType  n = right - left;
 			if (n <= 1)
@@ -2148,7 +2148,7 @@ namespace nanoflann
 				dataset_get_nm(this->vind[k], tmp[0], tmp[1], tmp[2]);
 				v3v3_add(avg_nm, tmp);
 			}
-			v3_mul(avg_nm, 1.0 / static_cast<ElementType>(n));
+			v3_mul(avg_nm, static_cast<ElementType>(1.0) / static_cast<ElementType>(n));
 			v3_normalize(avg_nm);
 		
 			ElementType avg_dot = (ElementType)0;

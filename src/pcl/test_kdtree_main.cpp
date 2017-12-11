@@ -27,6 +27,7 @@
 *************************************************************************/
 
 #include <pcl/kdtree/nanoflann.hpp>
+#include <pcl/kdtree/kdtree_flann.h>
 #include "io/tiny_obj_loader.h"
 
 #include <ctime>
@@ -35,12 +36,13 @@
 
 using namespace std;
 using namespace nanoflann;
+using namespace pcl;
 
 void dump_mem_usage();
 
 // This is an exampleof a custom data set class
 template <typename T>
-struct PointCloud
+struct PointCloud_T
 {
 	typedef T coord_t; //!< The type of each coordinate
 
@@ -101,7 +103,7 @@ struct PointCloudAdaptor
 
 
 template <typename T>
-void generateRandomPointCloud(PointCloud<T> &point, const size_t N, const T max_range = 10)
+void generateRandomPointCloud(PointCloud_T<T> &point, const size_t N, const T max_range = 10)
 {
 	std::cout << "Generating " << N << " point cloud...";
 	point.pts.resize(N);
@@ -116,7 +118,7 @@ void generateRandomPointCloud(PointCloud<T> &point, const size_t N, const T max_
 }
 
 template <typename T>
-void load_pointcloud(const string &filename, const string &basepath, PointCloud<T> &cloud)
+void load_pointcloud(const string &filename, const string &basepath, PointCloud_T<T> &cloud)
 {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -128,8 +130,8 @@ void load_pointcloud(const string &filename, const string &basepath, PointCloud<
 	if (ret)
 	{
 		for (size_t v = 0; v < attrib.vertices.size() / 3; v++) {
-			PointCloud<T>::Point  p{ attrib.vertices[3 * v + 0], attrib.vertices[3 * v + 1], attrib.vertices[3 * v + 2] };
-			PointCloud<T>::Normal n{ attrib.normals[3 * v + 0], attrib.normals[3 * v + 1], attrib.normals[3 * v + 2] };
+			PointCloud_T<T>::Point  p{ attrib.vertices[3 * v + 0], attrib.vertices[3 * v + 1], attrib.vertices[3 * v + 2] };
+			PointCloud_T<T>::Normal n{ attrib.normals[3 * v + 0], attrib.normals[3 * v + 1], attrib.normals[3 * v + 2] };
 			cloud.pts.push_back(p);
 			cloud.nms.push_back(n);
 		}
@@ -139,17 +141,17 @@ void load_pointcloud(const string &filename, const string &basepath, PointCloud<
 template <typename num_t>
 void kdtree_demo(const size_t N)
 {
-	PointCloud<num_t> cloud;
+	PointCloud_T<num_t> cloud;
 	string filename = "normal_lucy_none-Slice-54_center_vn.obj";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
 
 	// Generate points:
-	//generateRandomPointCloud(cloud, N);
+	//generateRandomPointCloud_T(cloud, N);
 	load_pointcloud(basepath + filename, basepath, cloud);
 
 	num_t query_pt[3] = { -36, 79, 1321};
 
-	typedef PointCloudAdaptor<PointCloud<num_t> > PC2KD;
+	typedef PointCloudAdaptor<PointCloud_T<num_t> > PC2KD;
 	const PC2KD  pc2kd(cloud); // The adaptor
 
 							   // construct a kd-tree index:
@@ -182,14 +184,23 @@ void kdtree_demo(const size_t N)
 
 }
 
-int main()
+int main__()
 {
 	// Randomize Seed
 	srand(time(NULL));
 	kdtree_demo<float>(1000000);
 	kdtree_demo<double>(1000000);
+
+
+	string filename = "normal_lucy_none-Slice-54_center_vn.obj";
+	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
+	// Generate points:
+	//generateRandomPointCloud(cloud, N);
+	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	//load_pointcloud(basepath + filename, basepath, cloud);
+
 	char pause;
-	std::cin >> pause;
+	std::cin >> pause; 
 	return 0;
 }
 

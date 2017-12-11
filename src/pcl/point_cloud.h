@@ -49,10 +49,8 @@
 #include "pcl/pcl_exports.h"
 #include "pcl/exceptions.h"
 
-#ifdef FULL_PCL
 #include <pcl/PCLHeader.h>
 #include <pcl/point_traits.h>
-#endif
 
 
 namespace pcl
@@ -71,7 +69,6 @@ namespace pcl
   template <typename PointT> class PointCloud;
   typedef std::vector<detail::FieldMapping> MsgFieldMap;
   
-#ifdef FULL_PCL
   /** \brief Helper functor structure for copying data between an Eigen type and a PointT. */
   template <typename PointOutT>
   struct NdCopyEigenPointFunctor
@@ -135,7 +132,7 @@ namespace pcl
     public:
       EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   };
-#endif
+
   namespace detail
   {
     template <typename PointT> std::shared_ptr<pcl::MsgFieldMap>&
@@ -184,7 +181,7 @@ namespace pcl
         * sensor_orientation_ to identity.
         */
       PointCloud () : 
-        /*header (),*/points (), width (0), height (0), is_dense (true),
+        header (),points (), width (0), height (0), is_dense (true),
         sensor_origin_ (Eigen::Vector4f::Zero ()), sensor_orientation_ (Eigen::Quaternionf::Identity ()),
         mapping_ ()
       {}
@@ -193,7 +190,7 @@ namespace pcl
         * \param[in] pc the cloud to copy into this
         */
       PointCloud (PointCloud<PointT> &pc) : 
-        /*header (), */points (), width (0), height (0), is_dense (true), 
+        header (), points (), width (0), height (0), is_dense (true), 
         sensor_origin_ (Eigen::Vector4f::Zero ()), sensor_orientation_ (Eigen::Quaternionf::Identity ()),
         mapping_ ()
       {
@@ -204,7 +201,7 @@ namespace pcl
         * \param[in] pc the cloud to copy into this
         */
       PointCloud (const PointCloud<PointT> &pc) : 
-        /*header (), */points (), width (0), height (0), is_dense (true), 
+        header (), points (), width (0), height (0), is_dense (true), 
         sensor_origin_ (Eigen::Vector4f::Zero ()), sensor_orientation_ (Eigen::Quaternionf::Identity ()),
         mapping_ ()
       {
@@ -217,7 +214,7 @@ namespace pcl
         */
       PointCloud (const PointCloud<PointT> &pc, 
                   const std::vector<int> &indices) :
-        /*header (pc.header), */points (indices.size ()), width (indices.size ()), height (1), is_dense (pc.is_dense),
+        header (pc.header), points (indices.size ()), width (indices.size ()), height (1), is_dense (pc.is_dense),
         sensor_origin_ (pc.sensor_origin_), sensor_orientation_ (pc.sensor_orientation_),
         mapping_ ()
       {
@@ -233,7 +230,7 @@ namespace pcl
         * \param[in] value_ default value
         */
       PointCloud (uint32_t width_, uint32_t height_, const PointT& value_ = PointT ())
-        : /*header ()*/
+        : header ()
         , points (width_ * height_, value_)
         , width (width_)
         , height (height_)
@@ -253,12 +250,11 @@ namespace pcl
       inline PointCloud&
       operator += (const PointCloud& rhs)
       {
-#ifdef FULL_PCL
         // Make the resultant point cloud take the newest stamp
         if (rhs.header.stamp > header.stamp)
           header.stamp = rhs.header.stamp;
-#endif
-        size_t nr_points = points.size ();
+      
+		size_t nr_points = points.size ();
         points.resize (nr_points + rhs.points.size ());
         for (size_t i = nr_points; i < points.size (); ++i)
           points[i] = rhs.points[i - nr_points];
@@ -411,11 +407,10 @@ namespace pcl
         return (getMatrixXfMap (sizeof (PointT) / sizeof (float),  sizeof (PointT) / sizeof (float), 0));
       }
 
-#ifdef FULL_PCL
       /** \brief The point cloud header. It contains information about the acquisition time. */
       pcl::PCLHeader header;
-#endif
-      /** \brief The point data. */
+      
+	  /** \brief The point data. */
       std::vector<PointT, Eigen::aligned_allocator<PointT> > points;
 
       /** \brief The point cloud width (if organized as an image-structure). */
