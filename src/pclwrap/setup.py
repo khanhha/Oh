@@ -1,5 +1,6 @@
 import sys
 import numpy
+import glob, os
 from distutils.core import setup, Extension
 from Cython.Build import cythonize
 
@@ -8,8 +9,17 @@ compile_args = []
 if sys.platform == 'darwin':
     compile_args.append('-mmacosx-version-min=10.7')
 
+source_files = [];
+for root, dirs, files in os.walk("..//..//src"):
+    for file in files:
+        if file.endswith(".cpp") and  file != '_pcl.cpp':
+            source_files.append(os.path.join(root, file))
+            print(os.path.join(root, file))
+
+source_files.insert(0, '_pcl.pyx')
+
 module = Extension('pcl._pcl',
-                sources=['_pcl.pyx'],
+                sources = source_files,
                 include_dirs= ['..//..//src', '..//..//3rdParty//eigen', '..//..//3rdParty', numpy.get_include()],
                 extra_compile_args=compile_args,
                 language='c++')

@@ -135,8 +135,11 @@ namespace pcl
         * \return number of neighbors found
         */
       virtual int 
-      nearestKSearch (const PointT &p_q, int k, 
-                      std::vector<int> &k_indices, std::vector<float> &k_sqr_distances) const = 0;
+		  nearestKSearch(const PointT &p_q, int k,
+			  std::vector<int> &k_indices, std::vector<float> &k_sqr_distances) const 
+	  {
+		  return 0;
+	  };
 
       /** \brief Search for k-nearest neighbors for the given query point.
         * 
@@ -224,8 +227,8 @@ namespace pcl
         * \return number of neighbors found in radius
         */
       virtual int 
-      radiusSearch (const PointT &p_q, double radius, std::vector<int> &k_indices,
-                    std::vector<float> &k_sqr_distances, unsigned int max_nn = 0) const = 0;
+		  radiusSearch(const PointT &p_q, double radius, std::vector<int> &k_indices,
+			  std::vector<float> &k_sqr_distances, unsigned int max_nn = 0) const { return 0; };
 
       /** \brief Search for all the nearest neighbors of the query point in a given radius.
         * 
@@ -298,12 +301,12 @@ namespace pcl
         if (indices_ == NULL)
         {
           assert (index >= 0 && index < static_cast<int> (input_->points.size ()) && "Out-of-bounds error in radiusSearch!");
-          return (radiusSearch (input_->points[index], radius, k_indices, k_sqr_distances, max_nn));
+          return radiusSearch(input_->points[index], radius, k_indices, k_sqr_distances, max_nn);
         }
         else
         {
           assert (index >= 0 && index < static_cast<int> (indices_->size ()) && "Out-of-bounds error in radiusSearch!");
-          return (radiusSearch (input_->points[(*indices_)[index]], radius, k_indices, k_sqr_distances, max_nn));
+          return radiusSearch(input_->points[(*indices_)[index]], radius, k_indices, k_sqr_distances, max_nn);
         }
       }
 
@@ -360,7 +363,7 @@ namespace pcl
 
       /** \brief Class getName method. */
       virtual std::string 
-      getName () const = 0;
+		  getName() const { return ""; };
   };
 }
 
