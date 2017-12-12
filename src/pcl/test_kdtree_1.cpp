@@ -72,8 +72,19 @@ int main()
 
 	KdTreeFLANN<PointXYZ> kdtree;
 	kdtree.setInputCloud(cloud);
+	kdtree.setNormalCloud(normal);
 	kdtree.setMaxPointsPerLeaf(30);
+	kdtree.setNormalThreshold(0.8f);
 	kdtree.addPointsFromInputCloud();
+
+	PointXYZ p = cloud->points[10];
+	std::vector<int> indices;
+	std::vector<float> sqrdsts;
+	kdtree.nearestKSearch(p, 10, indices, sqrdsts);
+
+	std::vector<int> indices_1;
+	std::vector<float> sqrdist_1;
+	kdtree.radiusSearch(p, 10.0f, indices_1, sqrdist_1);
 	
 	char pause;
 	std::cout << "press any key to escape...";

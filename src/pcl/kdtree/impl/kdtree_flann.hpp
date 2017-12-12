@@ -134,9 +134,15 @@ pcl::KdTreeFLANN<PointT, Dist>::setInputCloud (const PointCloudConstPtr &cloud, 
 }
 
 template <typename PointT, typename Dist /*= nanoflann::L2_Simple_Adaptor<float, PointCloudNanoflannAdaptor<PointT>>*/>
+void pcl::KdTreeFLANN<PointT, Dist>::setNormalCloud(const NormalCloudConstPtr &cloud)
+{
+	data_adaptor_->set_normal_cloud(cloud);
+}
+
+template <typename PointT, typename Dist /*= nanoflann::L2_Simple_Adaptor<float, PointCloudNanoflannAdaptor<PointT>>*/>
 void pcl::KdTreeFLANN<PointT, Dist>::addPointsFromInputCloud()
 {
-	flann_index_.reset(new FLANNIndex(dim_, *data_adaptor_, KDTreeSingleIndexAdaptorParams(max_points_per_leaf_ /* max leaf */)));
+	flann_index_.reset(new FLANNIndex(dim_, *data_adaptor_, KDTreeSingleIndexNormalAdaptorParams(max_points_per_leaf_ /* max leaf */)));
 	flann_index_->buildIndex();
 }
 

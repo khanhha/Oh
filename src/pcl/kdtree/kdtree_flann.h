@@ -94,15 +94,17 @@ namespace pcl
 			else return p.z;
 		}
 
+		inline bool kdtree_has_nm() const { if (cloud_normal_) return true; else return false; }
+
 		inline bool kdtree_get_nm(const size_t idx, float &x, float &y, float &z) const
 		{
 			if (cloud_normal_) 
 			{
 				const size_t real_idx = index_mapping_ ? index_mapping_->at(idx) : idx;
 				const Normal &n = cloud_normal_->points[real_idx];
-				x = n.x;
-				y = n.y;
-				z = n.z;
+				x = n.normal_x;
+				y = n.normal_y;
+				z = n.normal_z;
 				return true;
 			}
 			else
@@ -143,6 +145,10 @@ namespace pcl
       typedef typename KdTree<PointT>::PointCloud PointCloud;
       typedef typename KdTree<PointT>::PointCloudConstPtr PointCloudConstPtr;
 
+	  typedef typename pcl::PointCloud<Normal> NormalCloud;
+	  typedef typename std::shared_ptr<NormalCloud> NormalCloudPtr;
+	  typedef typename std::shared_ptr<const NormalCloud> NormalCloudConstPtr;
+
       typedef std::shared_ptr<std::vector<int> > IndicesPtr;
       typedef std::shared_ptr<const std::vector<int> > IndicesConstPtr;
 
@@ -150,7 +156,7 @@ namespace pcl
 	  typedef std::shared_ptr<DataAdaptor> DataAdaptorPtr;
 	  typedef std::shared_ptr<DataAdaptor> DataAdaptorConstPtr;
 
-      typedef nanoflann::KDTreeSingleIndexAdaptor<Dist, DataAdaptor, 3, int> FLANNIndex;
+      typedef nanoflann::KDTreeSingleIndexNormalAdaptor<Dist, DataAdaptor, 3, int> FLANNIndex;
 
       // Boost shared pointers
       typedef std::shared_ptr<KdTreeFLANN<PointT> > Ptr;
@@ -178,11 +184,12 @@ namespace pcl
         flann_index_ = k.flann_index_;
         cloud_ = k.cloud_;
         index_mapping_ = k.index_mapping_;
-        identity_mapping_ = k.identity_mapping_;
         dim_ = k.dim_;
         total_nr_points_ = k.total_nr_points_;
         param_k_ = k.param_k_;
         param_radius_ = k.param_radius_;
+		max_points_per_leaf_ = k.max_points_per_leaf_;
+		normal_threshold_ = k.normal_threshold_;
         return (*this);
       }
 
@@ -212,9 +219,14 @@ namespace pcl
       void 
       setInputCloud (const PointCloudConstPtr &cloud, const IndicesConstPtr &indices = IndicesConstPtr ());
 
+	  void 
+	  setNormalCloud(const NormalCloudConstPtr &cloud);
+
 	  void addPointsFromInputCloud();
 
 	  inline void setMaxPointsPerLeaf(size_t npoints) { max_points_per_leaf_ = npoints; };
+
+	  inline void setNormalThreshold(float thres) { normal_threshold_ = thres; }
 
       /** \brief Search for k-nearest neighbors for the given query point.
         * 
@@ -303,6 +315,8 @@ namespace pcl
       int total_nr_points_;
 
 	  size_t max_points_per_leaf_;
+
+	  float  normal_threshold_;
 
       /** \brief The KdTree search parameters for K-nearest neighbors. */
       nanoflann::SearchParams param_k_;

@@ -2106,7 +2106,10 @@ namespace nanoflann
 			BaseClassRef::m_size_at_index_build = BaseClassRef::m_size;
 			if (BaseClassRef::m_size == 0) return;
 			computeBoundingBox(BaseClassRef::root_bbox);
-			BaseClassRef::root_node = this->divideTreeNormalThreshold(0, BaseClassRef::m_size, BaseClassRef::root_bbox);   // construct the tree
+			if(dataset.kdtree_has_nm())
+				BaseClassRef::root_node = this->divideTreeNormalThreshold(0, BaseClassRef::m_size, BaseClassRef::root_bbox);   // construct the tree
+			else
+				BaseClassRef::root_node = this->divideTree(*this, 0, BaseClassRef::m_size, BaseClassRef::root_bbox);   // construct the tree
 		}
 
 		/// Helper accessor to the dataset points:
