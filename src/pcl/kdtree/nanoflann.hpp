@@ -1407,19 +1407,19 @@ namespace nanoflann
 			}
 
 			/* Call recursively to search next level down. */
-                        if(!searchLevel(result_set, vec, bestChild, mindistsq, dists, epsError)) {
-                            // the resultset doesn't want to receive any more points, we're done searching!
-                            return false;
-                        }
+            if(!searchLevel(result_set, vec, bestChild, mindistsq, dists, epsError)) {
+                // the resultset doesn't want to receive any more points, we're done searching!
+                return false;
+            }
 
 			DistanceType dst = dists[idx];
 			mindistsq = mindistsq + cut_dist - dst;
 			dists[idx] = cut_dist;
 			if (mindistsq*epsError <= result_set.worstDist()) {
-                            if(!searchLevel(result_set, vec, otherChild, mindistsq, dists, epsError)) {
-                                // the resultset doesn't want to receive any more points, we're done searching!
-                                return false;
-                            }
+                if(!searchLevel(result_set, vec, otherChild, mindistsq, dists, epsError)) {
+                    // the resultset doesn't want to receive any more points, we're done searching!
+                    return false;
+                }
 			}
 			dists[idx] = dst;
                         return true;
@@ -2168,8 +2168,7 @@ namespace nanoflann
 		{
 			NodePtr node = this->pool.template allocate<Node>(); // allocate memory
 
-			if ((right - left) <= static_cast<IndexType>(this->m_leaf_max_size)  &&
-				calcNormalDeviation(left, right) > index_params.normal_threshold) {
+			if ((right == left) || ((right - left) <= static_cast<IndexType>(this->m_leaf_max_size) && calcNormalDeviation(left, right) > index_params.normal_threshold)) {
 				
 				node->child1 = node->child2 = NULL;    /* Mark as leaf node. */
 				node->node_type.lr.left = left;
@@ -2331,6 +2330,20 @@ namespace nanoflann
 			}
 		}
 
+		void computeBoundingBox(BoundingBox& bbox, IndexType left, IndexType right) const
+		{
+			for (int i = 0; i < (DIM > 0 ? DIM : this->dim); ++i) {
+				bbox[i].low = dataset_get(*this, this->vind[left], i);
+				bbox[i].high = dataset_get(*this, this->vind[left], i);
+			}
+			for (IndexType k = left + 1; k < right; ++k) {
+				for (int i = 0; i < (DIM > 0 ? DIM : this->dim); ++i) {
+					if (bbox[i].low > dataset_get(*this, this->vind[k], i)) bbox[i].low = dataset_get(*this, this->vind[k], i);
+					if (bbox[i].high < dataset_get(*this, this->vind[k], i)) bbox[i].high = dataset_get(*this, this->vind[k], i);
+				}
+			}
+		}
+
 		/**
 		* Performs an exact search in the tree starting from a node.
 		* \tparam RESULTSET Should be any ResultSet<DistanceType>
@@ -2395,7 +2408,6 @@ namespace nanoflann
 			dists[idx] = dst;
 			return true;
 		}
-
 	public:
 		/**  Stores the index in a binary file.
 		*   IMPORTANT NOTE: The set of data points is NOT stored in the file, so when loading the index object it must be constructed associated to the same source of data points used while building it.
@@ -2413,6 +2425,37 @@ namespace nanoflann
 		void loadIndex(FILE* stream)
 		{
 			this->loadIndex_(*this, stream);
+		}
+		
+		int getAllLeafNodesBoundingBox(std::vector<float> &bmin, std::vector<float> &bmax) const
+		{
+			traverseLeafBounds(bmin, bmax, root_node);
+			assert((bmin.size() % DIM) == 0);
+			return bmin.size() / DIM;
+		}
+
+	private:
+		void traverseLeafBounds(std::vector<float> &bmin, std::vector<float> &bmax, NodePtr node) const
+		{
+			/* If this is a leaf node, then do check and return. */
+			if ((node->child1 == NULL) && (node->child2 == NULL)) 
+			{
+				BoundingBox bb;
+				computeBoundingBox(bb, node->node_type.lr.left, node->node_type.lr.right);
+				for (int i = 0; i < DIM; ++i)
+				{
+					bmin.push_back(bb[i].low);
+					bmax.push_back(bb[i].high);
+				}
+			}
+			else 
+			{
+				if (node->child1 != NULL)
+					traverseLeafBounds(bmin, bmax, node->child1);
+
+				if (node->child2 != NULL)
+					traverseLeafBounds(bmin, bmax, node->child2);
+			}
 		}
 
 	};// class KDTree

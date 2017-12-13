@@ -230,6 +230,13 @@ pcl::KdTreeFLANN<PointT, Dist>::cleanup ()
     indices_.reset ();
 }
 
+template <typename PointT, typename Dist /*= nanoflann::L2_Simple_Adaptor<float, PointCloudNanoflannAdaptor<PointT>>*/>
+int pcl::KdTreeFLANN<PointT, Dist>::getAllLeafNodesBoundingBox(std::vector<float> &bmin, std::vector<float> &bmax)
+{
+	return flann_index_->getAllLeafNodesBoundingBox(bmin, bmax);
+}
+
+
 #if 0
 ///////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointT, typename Dist> void 

@@ -31,6 +31,19 @@ cdef class KdTreeFLANN:
     def add_points_from_input_cloud(self):
         self.me.addPointsFromInputCloud()
 
+    def get_all_leaf_nodes_bounding_box(self):
+        cdef vector[float] bmin
+        cdef vector[float] bmax
+        cdef nbb = self.me.getAllLeafNodesBoundingBox(bmin, bmax)
+
+        bounds = np.ndarray([nbb, 2, 3], dtype = float)
+        for i in range(nbb):
+            for k in range(3):
+                bounds[i][0][k] = bmin[i*3 + k]
+                bounds[i][1][k] = bmax[i*3 + k]
+
+        return bounds
+
     def radius_search(self, point, radius):
         cdef vector[int] radius_indices
         cdef vector[float] radius_distances
@@ -99,6 +112,22 @@ cdef class KdTreeFLANN:
 
         return ind, sqdist
 
+    def radius_search_for_cloud(self, PointCloud pc not None, double radius, unsigned int max_nn = 0):
+        """
+        Find the radius and squared distances for all points
+        in the pointcloud. Results are in ndarrays, size (pc.size, k)
+        Returns: (radius_indices, radius_distances)
+        """
+        k = max_nn
+        cdef cnp.npy_intp n_points = pc.size
+        cdef cnp.ndarray[float, ndim=2] sqdist = np.zeros((n_points, k), dtype=np.float32)
+        cdef cnp.ndarray[int, ndim=2] ind = np.zeros((n_points, k), dtype=np.int32)
+
+        for i in range(n_points):
+            self._search_radius(pc, i, k, radius, ind[i], sqdist[i])
+
+        return ind, sqdist
+
     @cython.boundscheck(False)
     cdef void _nearest_k(self, PointCloud pc, int index, int k,
                          cnp.ndarray[ndim=1, dtype=int, mode='c'] ind,
@@ -116,22 +145,6 @@ cdef class KdTreeFLANN:
         for i in range(k):
             sqdist[i] = k_sqr_distances[i]
             ind[i] = k_indices[i]
-
-    def radius_search_for_cloud(self, PointCloud pc not None, double radius, unsigned int max_nn = 0):
-        """
-        Find the radius and squared distances for all points
-        in the pointcloud. Results are in ndarrays, size (pc.size, k)
-        Returns: (radius_indices, radius_distances)
-        """
-        k = max_nn
-        cdef cnp.npy_intp n_points = pc.size
-        cdef cnp.ndarray[float, ndim=2] sqdist = np.zeros((n_points, k), dtype=np.float32)
-        cdef cnp.ndarray[int, ndim=2] ind = np.zeros((n_points, k), dtype=np.int32)
-
-        for i in range(n_points):
-            self._search_radius(pc, i, k, radius, ind[i], sqdist[i])
-
-        return ind, sqdist
 
     @cython.boundscheck(False)
     cdef void _search_radius(self, PointCloud pc, int index, int k, float radius,

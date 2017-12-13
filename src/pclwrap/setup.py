@@ -9,6 +9,12 @@ compile_args = []
 if sys.platform == 'darwin':
     compile_args.append('-mmacosx-version-min=10.7')
 
+#clear file
+for root, dirs, files in os.walk("..//..//src"):
+    for file in files:
+        if file == '_pcl.cpp':
+            os.remove(os.path.join(root, file))
+
 source_files = [];
 for root, dirs, files in os.walk("..//..//src"):
     for file in files:

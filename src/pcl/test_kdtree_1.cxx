@@ -85,6 +85,9 @@ int main()
 	std::vector<int> indices_1;
 	std::vector<float> sqrdist_1;
 	kdtree.radiusSearch(p, 10.0f, indices_1, sqrdist_1);
+
+	std::vector<float> bmin, bmax;
+	size_t nleaf = kdtree.getAllLeafNodesBoundingBox(bmin, bmax);
 	
 	char pause;
 	std::cout << "press any key to escape...";

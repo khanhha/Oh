@@ -266,6 +266,8 @@ namespace pcl
       radiusSearch (const PointT &point, double radius, std::vector<int> &k_indices,
                     std::vector<float> &k_sqr_distances, unsigned int max_nn = 0) const;
 
+	  int getAllLeafNodesBoundingBox(std::vector<float> &bmin, std::vector<float> &bmax);
+
     private:
       /** \brief Internal cleanup method. */
       void 
@@ -326,6 +328,8 @@ namespace pcl
 
 	  mutable std::vector<std::pair<int, float>> cache_radius_search_results;
   };
+
+
 }
 
 //#ifdef PCL_NO_PRECOMPILE
