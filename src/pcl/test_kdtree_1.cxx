@@ -88,7 +88,13 @@ int main()
 
 	std::vector<float> bmin, bmax;
 	size_t nleaf = kdtree.getAllLeafNodesBoundingBox(bmin, bmax);
+
+	kdtree.getNodesBoundingBoxAtDepth(10, bmin, bmax);
 	
+	std::vector<float> bmin_1, bmax_1;
+	std::vector<int> depths;
+	kdtree.getNodesBoundingBoxAtMaxDepth(10, bmin, bmax, depths);
+
 	char pause;
 	std::cout << "press any key to escape...";
 	std::cin >> pause; 

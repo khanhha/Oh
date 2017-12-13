@@ -31,6 +31,41 @@ cdef class KdTreeFLANN:
     def add_points_from_input_cloud(self):
         self.me.addPointsFromInputCloud()
 
+    def get_leaf_count(self):
+        return self.me.getLeafCount()
+
+    def get_max_depth(self):
+        return self.me.getMaxDepth()
+
+    def get_nodes_bounding_box_at_depth(self, int expected_depth):
+        cdef vector[float] bmin
+        cdef vector[float] bmax
+        cdef nbb = self.me.getNodesBoundingBoxAtDepth(expected_depth, bmin, bmax)
+
+        bounds = np.ndarray([nbb, 2, 3], dtype = float)
+        for i in range(nbb):
+            for k in range(3):
+                bounds[i][0][k] = bmin[i*3 + k]
+                bounds[i][1][k] = bmax[i*3 + k]
+
+        return bounds
+
+    def get_nodes_bounding_box_at_max_depth(self, int expected_depth):
+        cdef vector[float] bmin
+        cdef vector[float] bmax
+        cdef vector[int]   vdepths
+        cdef nbb = self.me.getNodesBoundingBoxAtMaxDepth(expected_depth, bmin, bmax, vdepths)
+
+        bounds = np.ndarray([nbb, 2, 3], dtype = float)
+        depths = np.ndarray(nbb, dtype = int)
+        for i in range(nbb):
+            depths[i] = vdepths[i]
+            for k in range(3):
+                bounds[i][0][k] = bmin[i*3 + k]
+                bounds[i][1][k] = bmax[i*3 + k]
+
+        return bounds, depths
+
     def get_all_leaf_nodes_bounding_box(self):
         cdef vector[float] bmin
         cdef vector[float] bmax

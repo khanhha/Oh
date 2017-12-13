@@ -50,6 +50,7 @@
 #include <cassert>
 #include <algorithm>
 #include <stdexcept>
+#include <functional>		
 #include <cstdio>  // for fwrite()
 #define _USE_MATH_DEFINES // Required by MSVC to define M_PI,etc. in <cmath>
 #include <cmath>   // for abs()
@@ -2344,6 +2345,14 @@ namespace nanoflann
 			}
 		}
 
+		void mergeBoundingBox(const BoundingBox &a, const BoundingBox &b, BoundingBox &ret) const
+		{
+			for (int i = 0; i < (DIM > 0 ? DIM : this->dim); ++i) {
+				ret[i].low = std::min(a[i].low, b[i].low);
+				ret[i].high = std::max(a[i].high, b[i].high);
+			}
+		}
+
 		/**
 		* Performs an exact search in the tree starting from a node.
 		* \tparam RESULTSET Should be any ResultSet<DistanceType>
@@ -2427,37 +2436,143 @@ namespace nanoflann
 			this->loadIndex_(*this, stream);
 		}
 		
+		int getMaxDepth() const
+		{
+			int max_depth = 0;
+			std::function<void(NodePtr, int)> depth_callback = [&](NodePtr node, int depth)
+			{
+				max_depth = std::max(depth, max_depth);
+			};
+			traverseTree(root_node, 0, depth_callback);
+
+			return max_depth;
+		}
+
+		inline bool isLeafNode(NodePtr node) const
+		{
+			return node->child1 == NULL && node->child2 == NULL;
+		}
+
+		int getLeafCount() const
+		{
+			int cnt = 0;
+			std::function<void(NodePtr, int)> callback = [&](NodePtr node, int depth)
+			{
+				if (isLeafNode(node)) 
+					cnt++;
+			};
+
+			traverseTree(root_node, 0, callback);
+
+			return cnt;
+		}
+
 		int getAllLeafNodesBoundingBox(std::vector<float> &bmin, std::vector<float> &bmax) const
 		{
-			traverseLeafBounds(bmin, bmax, root_node);
+			std::function<void(NodePtr, int)> callback = [&](NodePtr node, int depth)
+			{
+				if (isLeafNode(node))
+				{
+					BoundingBox bb;
+					computeBoundingBox(bb, node->node_type.lr.left, node->node_type.lr.right);
+					for (int i = 0; i < DIM; ++i)
+					{
+						bmin.push_back(bb[i].low);
+						bmax.push_back(bb[i].high);
+					}
+				}
+			};
+
+			traverseTree(root_node, 0, callback);
+
 			assert((bmin.size() % DIM) == 0);
+
 			return bmin.size() / DIM;
 		}
 
+		int getNodesBoundingBoxAtMaxDepth(int expected_depth, std::vector<float> &bmin, std::vector<float> &bmax, std::vector<int> &depths) const
+		{
+			std::function<void(int, const BoundingBox&)> depth_callback = [&](int cur_depth, const BoundingBox& bb)
+			{
+				if (cur_depth <= expected_depth)
+				{
+					depths.push_back(cur_depth);
+					for (int i = 0; i < 3; ++i)
+					{
+						bmin.push_back(bb[i].low);
+						bmax.push_back(bb[i].high);
+					}
+				}
+			};
+
+			traverseDepthBounds(root_node, 0, depth_callback);
+
+			return depths.size();
+		}
+
+		int getNodesBoundingBoxAtDepth(int expected_depth, std::vector<float> &bmin, std::vector<float> &bmax) const
+		{
+			std::function<void(int, const BoundingBox&)> depth_callback = [&](int cur_depth, const BoundingBox& bb)
+			{
+				if (cur_depth == expected_depth)
+				{
+					for (int i = 0; i < 3; ++i)
+					{
+						bmin.push_back(bb[i].low);
+						bmax.push_back(bb[i].high);
+					}
+				}
+			};
+
+			traverseDepthBounds(root_node, 0, depth_callback);
+
+			return bmin.size() / dim;
+		}
+
 	private:
-		void traverseLeafBounds(std::vector<float> &bmin, std::vector<float> &bmax, NodePtr node) const
+		void traverseTree(NodePtr node, int depth, std::function<void(NodePtr, int)> &callback) const
+		{
+			callback(node, depth);
+
+			if (node->child1 != NULL)
+				traverseTree(node->child1, depth + 1, callback);
+
+			if (node->child2 != NULL)
+				traverseTree(node->child2, depth +1, callback);
+		}
+
+		BoundingBox traverseDepthBounds(NodePtr node, int depth, std::function<void(int, const BoundingBox&)> &callback) const
 		{
 			/* If this is a leaf node, then do check and return. */
-			if ((node->child1 == NULL) && (node->child2 == NULL)) 
+			if ((node->child1 == NULL) && (node->child2 == NULL))
 			{
 				BoundingBox bb;
 				computeBoundingBox(bb, node->node_type.lr.left, node->node_type.lr.right);
-				for (int i = 0; i < DIM; ++i)
-				{
-					bmin.push_back(bb[i].low);
-					bmax.push_back(bb[i].high);
-				}
+				return bb;
 			}
-			else 
+			else
 			{
-				if (node->child1 != NULL)
-					traverseLeafBounds(bmin, bmax, node->child1);
+				BoundingBox leftbb, rightbb, bb;
+				if (node->child1 != NULL) {
+					leftbb = traverseDepthBounds(node->child1, depth + 1, callback);
+				}
 
-				if (node->child2 != NULL)
-					traverseLeafBounds(bmin, bmax, node->child2);
+				if (node->child2 != NULL) {
+					rightbb = traverseDepthBounds(node->child2, depth +1, callback);
+				}
+
+				if (node->child1 != NULL && node->child2 != NULL)
+					mergeBoundingBox(leftbb, rightbb, bb);
+				else if (node->child1 != NULL)
+					bb = leftbb;
+				else
+					bb = rightbb;
+ 
+				callback(depth, bb);
+				
+				return bb;
 			}
 		}
-
 	};// class KDTree
 
 /** @} */ // end of grouping

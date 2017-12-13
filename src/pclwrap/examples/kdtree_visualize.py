@@ -145,6 +145,9 @@ def vtk_build_box_actor(bounds, degenerate_bound = 0.5):
 
 def vtk_build_kdtree_leaf_box_actor(kdtree):
     bounds = kdtree.get_all_leaf_nodes_bounding_box()
+    #[bounds, depths] = kdtree.get_nodes_bounding_box_at_max_depth(20)
+    #bounds = kdtree.get_nodes_bounding_box_at_depth(13)
+
     return vtk_build_box_actor(bounds)
 
 def vtk_build_point_cloud_actor(cloud):

@@ -237,6 +237,30 @@ int pcl::KdTreeFLANN<PointT, Dist>::getAllLeafNodesBoundingBox(std::vector<float
 }
 
 
+template <typename PointT, typename Dist /*= nanoflann::L2_Simple_Adaptor<float, PointCloudNanoflannAdaptor<PointT>>*/>
+int pcl::KdTreeFLANN<PointT, Dist>::getNodesBoundingBoxAtDepth(int expected_depth, std::vector<float> &bmin, std::vector<float> &bmax) const
+{
+	return flann_index_->getNodesBoundingBoxAtDepth(expected_depth, bmin, bmax);
+}
+
+template <typename PointT, typename Dist /*= nanoflann::L2_Simple_Adaptor<float, PointCloudNanoflannAdaptor<PointT>>*/>
+int pcl::KdTreeFLANN<PointT, Dist>::getNodesBoundingBoxAtMaxDepth(int expected_depth, std::vector<float> &bmin, std::vector<float> &bmax, std::vector<int> &depths) const
+{
+	return flann_index_->getNodesBoundingBoxAtMaxDepth(expected_depth, bmin, bmax, depths);
+}
+
+template <typename PointT, typename Dist /*= nanoflann::L2_Simple_Adaptor<float, PointCloudNanoflannAdaptor<PointT>>*/>
+int pcl::KdTreeFLANN<PointT, Dist>::getLeafCount() const
+{
+	return flann_index_->getLeafCount();
+}
+
+template <typename PointT, typename Dist /*= nanoflann::L2_Simple_Adaptor<float, PointCloudNanoflannAdaptor<PointT>>*/>
+int pcl::KdTreeFLANN<PointT, Dist>::getMaxDepth() const
+{
+	return flann_index_->getMaxDepth();
+}
+
 #if 0
 ///////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointT, typename Dist> void 
