@@ -95,6 +95,12 @@ int main()
 	std::vector<int> depths;
 	kdtree.getNodesBoundingBoxAtMaxDepth(10, bmin, bmax, depths);
 
+	PointXYZ p_leaf;
+	for (int i = 0; i < 3; ++i)
+		p_leaf.data[i] = 0.5 * (bmin[i] + bmax[i]);
+	std::vector<int> leaf_point_indices;
+	kdtree.getLeafPointIndices(p_leaf, leaf_point_indices);
+
 	char pause;
 	std::cout << "press any key to escape...";
 	std::cin >> pause; 

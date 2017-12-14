@@ -182,7 +182,7 @@ namespace nanoflann
                  * Called during search to add an element matching the criteria.
                  * @return true if the search should be continued, false if the results are sufficient
                  */
-                inline bool addPoint(DistanceType dist, IndexType index)
+        inline bool addPoint(DistanceType dist, IndexType index)
 		{
 			if (dist < radius)
 				m_indices_dists.push_back(std::make_pair(index, dist));
@@ -203,6 +203,39 @@ namespace nanoflann
 		   return *it;
 		}
 	};
+
+	/**
+	* A result-set class used when performing a radius based search.
+	*/
+	template <typename DistanceType, typename NodePtr>
+	class RadiusNodeResultSet
+	{
+	public:
+		const DistanceType	 radius;
+		std::vector<NodePtr> nodes;
+		const size_t max_nodes;
+
+		inline RadiusNodeResultSet(DistanceType radius_, size_t max_nodes_ = 1) : radius(radius_), max_nodes(max_nodes_) { init(); }
+
+		inline void init() { clear(); }
+		inline void clear() { nodes.clear(); }
+		inline size_t size() const { return nodes.size(); }
+		inline bool full() const { return true; }
+		inline bool addNode(NodePtr node)
+		{
+			if (nodes.size() >= max_nodes)
+				return false;
+			nodes.push_back(node);
+			//enough. end search ealier
+			if (nodes.size() == max_nodes)
+				return false;
+			else
+				return true;
+		}
+
+		inline DistanceType worstDist() const { return radius; }
+	};
+
 
 
 	/** @} */
@@ -2417,6 +2450,58 @@ namespace nanoflann
 			dists[idx] = dst;
 			return true;
 		}
+
+		/**
+		* Performs an exact search in the tree starting from a node.
+		* \tparam RESULTSET Should be any ResultSet<DistanceType>
+		* \return true if the search should be continued, false if the results are sufficient
+		*/
+		template <class RESULTSET>
+		bool searchLeafNodes(RESULTSET& result_set, const ElementType* vec, const NodePtr node, DistanceType mindistsq, distance_vector_t& dists, const float epsError) const
+		{
+			/* If this is a leaf node, then do check and return. */
+			if (isLeafNode(node)) {
+				return result_set.addNode(node);
+			}
+
+			/* Which child branch should be taken first? */
+			int idx = node->node_type.sub.divfeat;
+			ElementType val = vec[idx];
+			DistanceType diff1 = val - node->node_type.sub.divlow;
+			DistanceType diff2 = val - node->node_type.sub.divhigh;
+
+			NodePtr bestChild;
+			NodePtr otherChild;
+			DistanceType cut_dist;
+			if ((diff1 + diff2) < 0) {
+				bestChild = node->child1;
+				otherChild = node->child2;
+				cut_dist = distance.accum_dist(val, node->node_type.sub.divhigh, idx);
+			}
+			else {
+				bestChild = node->child2;
+				otherChild = node->child1;
+				cut_dist = distance.accum_dist(val, node->node_type.sub.divlow, idx);
+			}
+
+			/* Call recursively to search next level down. */
+			if (!searchLeafNodes(result_set, vec, bestChild, mindistsq, dists, epsError)) {
+				// the resultset doesn't want to receive any more points, we're done searching!
+				return false;
+			}
+
+			DistanceType dst = dists[idx];
+			mindistsq = mindistsq + cut_dist - dst;
+			dists[idx] = cut_dist;
+			if (mindistsq*epsError <= result_set.worstDist()) {
+				if (!searchLeafNodes(result_set, vec, otherChild, mindistsq, dists, epsError)) {
+					// the resultset doesn't want to receive any more points, we're done searching!
+					return false;
+				}
+			}
+			dists[idx] = dst;
+			return true;
+		}
 	public:
 		/**  Stores the index in a binary file.
 		*   IMPORTANT NOTE: The set of data points is NOT stored in the file, so when loading the index object it must be constructed associated to the same source of data points used while building it.
@@ -2452,6 +2537,10 @@ namespace nanoflann
 		{
 			return node->child1 == NULL && node->child2 == NULL;
 		}
+		inline bool isBranchNode(NodePtr node) const
+		{
+			return node->child1 != NULL || node->child2 != NULL;
+		}
 
 		int getLeafCount() const
 		{
@@ -2465,6 +2554,51 @@ namespace nanoflann
 			traverseTree(root_node, 0, callback);
 
 			return cnt;
+		}
+
+		int getBranchCount() const
+		{
+			int cnt = 0;
+			std::function<void(NodePtr, int)> callback = [&](NodePtr node, int depth)
+			{
+				if (isBranchNode(node))
+					cnt++;
+			};
+
+			traverseTree(root_node, 0, callback);
+
+			return cnt;
+		}
+
+		int getLeafPointIndices(const ElementType *query_point, std::vector<int> &indices) const
+		{
+			assert(query_point);
+			if (this->size(*this) == 0)
+				return false;
+			if (!BaseClassRef::root_node)
+				throw std::runtime_error("[nanoflann] getLeafPointIndices() called before building the index.");
+			SearchParams searchParams;
+			float epsError = 1 + searchParams.eps;
+
+			RadiusNodeResultSet<DistanceType, NodePtr> result(0.0, 1);
+			distance_vector_t dists; // fixed or variable-sized container (depending on DIM)
+			dists.assign((DIM > 0 ? DIM : BaseClassRef::dim), 0); // Fill it with zeros.
+			DistanceType distsq = this->computeInitialDistances(*this, query_point, dists);
+			searchLeafNodes<RadiusNodeResultSet<DistanceType, NodePtr>>(result, query_point, BaseClassRef::root_node, distsq, dists, epsError);  // "count_leaf" parameter removed since was neither used nor returned to the user.
+
+			const size_t nFound = result.size();
+			if (nFound == 1)
+			{
+				NodePtr node = result.nodes[0];
+				for (int i = node->node_type.lr.left; i < node->node_type.lr.right; ++i)
+					indices.push_back(BaseClassRef::vind[i]);
+				
+				return node->node_type.lr.right - node->node_type.lr.left;
+			}
+			else 
+			{
+				return 0;
+			}
 		}
 
 		int getAllLeafNodesBoundingBox(std::vector<float> &bmin, std::vector<float> &bmax) const
@@ -2529,6 +2663,7 @@ namespace nanoflann
 			return bmin.size() / dim;
 		}
 
+
 	private:
 		void traverseTree(NodePtr node, int depth, std::function<void(NodePtr, int)> &callback) const
 		{
@@ -2544,7 +2679,7 @@ namespace nanoflann
 		BoundingBox traverseDepthBounds(NodePtr node, int depth, std::function<void(int, const BoundingBox&)> &callback) const
 		{
 			/* If this is a leaf node, then do check and return. */
-			if ((node->child1 == NULL) && (node->child2 == NULL))
+			if (isLeafNode(node))
 			{
 				BoundingBox bb;
 				computeBoundingBox(bb, node->node_type.lr.left, node->node_type.lr.right);

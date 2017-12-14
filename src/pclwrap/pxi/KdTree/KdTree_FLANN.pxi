@@ -34,8 +34,21 @@ cdef class KdTreeFLANN:
     def get_leaf_count(self):
         return self.me.getLeafCount()
 
+    def get_branch_count(self):
+        return self.me.getBranchCount()
+
     def get_max_depth(self):
         return self.me.getMaxDepth()
+
+    def get_leaf_point_indices(self, point):
+        cdef vector[int] indices
+        cdef npoints = self.me.getLeafPointIndices(to_point_t(point), indices)
+
+        r_indices = np.ndarray(npoints, dtype = int)
+        for i in range(npoints):
+            r_indices[i] = indices[i];
+
+        return r_indices
 
     def get_nodes_bounding_box_at_depth(self, int expected_depth):
         cdef vector[float] bmin
@@ -77,7 +90,7 @@ cdef class KdTreeFLANN:
                 bounds[i][0][k] = bmin[i*3 + k]
                 bounds[i][1][k] = bmax[i*3 + k]
 
-        return bounds
+        return bounds, nbb
 
     def radius_search(self, point, radius):
         cdef vector[int] radius_indices

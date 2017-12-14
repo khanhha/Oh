@@ -268,9 +268,12 @@ namespace pcl
 
 	  int getMaxDepth() const;
 	  int getLeafCount() const;
+	  int getBranchCount() const;
+	  //these below methods are only recommended for visualization purpose because they are quite slow.
 	  int getAllLeafNodesBoundingBox(std::vector<float> &bmin, std::vector<float> &bmax);
 	  int getNodesBoundingBoxAtMaxDepth(int expected_depth, std::vector<float> &bmin, std::vector<float> &bmax, std::vector<int> &depths) const;
 	  int getNodesBoundingBoxAtDepth(int expected_depth, std::vector<float> &bmin, std::vector<float> &bmax) const;
+	  int getLeafPointIndices(const PointT &point, std::vector<int> &indices) const;
     private:
       /** \brief Internal cleanup method. */
       void 
