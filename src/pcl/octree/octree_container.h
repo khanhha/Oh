@@ -366,8 +366,8 @@ namespace pcl
         /** \brief Retrieve reference to point indices vector. This container stores a vector of point indices.
          * \return reference to vector of point indices to be stored within data vector
          */
-        std::vector<int>&
-        getPointIndicesVector ()
+        const std::vector<int>&
+        getPointIndicesVector () const 
         {
           return leafDataTVector_;
         }

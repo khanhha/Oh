@@ -8,7 +8,8 @@ namespace pcl
 {
 	namespace io
 	{
-		PCL_EXPORTS bool cloudload_point_cloud(const std::string &filename, const std::string &basepath, PointCloud<PointXYZ>::Ptr &cloud);
+		PCL_EXPORTS bool cloud_load_point_cloud(const std::string &filename, const std::string &basepath, PointCloud<PointXYZ>::Ptr &cloud);
+		PCL_EXPORTS bool cloud_load_point_cloud(const std::string &filename, const std::string &basepath, PointCloud<PointXYZ>::Ptr &cloud, PointCloud<Normal>::Ptr &ncloud);
 	}
 }
 #endif

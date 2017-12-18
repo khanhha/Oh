@@ -58,7 +58,7 @@ void load_pcl_1(const string &filename, const string &basepath, PointCloud<Point
 	}
 }
 
-int main()
+void run()
 {
 	// Randomize Seed
 	srand(time(NULL));
@@ -90,7 +90,7 @@ int main()
 	size_t nleaf = kdtree.getAllLeafNodesBoundingBox(bmin, bmax);
 
 	kdtree.getNodesBoundingBoxAtDepth(10, bmin, bmax);
-	
+
 	std::vector<float> bmin_1, bmax_1;
 	std::vector<int> depths;
 	kdtree.getNodesBoundingBoxAtMaxDepth(10, bmin, bmax, depths);
@@ -103,7 +103,7 @@ int main()
 
 	char pause;
 	std::cout << "press any key to escape...";
-	std::cin >> pause; 
-	
-	return 0;
+	std::cin >> pause;
 }
+
+//int main(){ run(); return 0;}

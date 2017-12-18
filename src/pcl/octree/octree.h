@@ -52,9 +52,8 @@
 #include <pcl/octree/octree_pointcloud_changedetector.h>
 #include <pcl/octree/octree_pointcloud_voxelcentroid.h>
 #include <pcl/octree/octree_pointcloud_normal.h>
-
 //#include <pcl/octree/octree_pointcloud_adjacency.h>
-
+#include <pcl/octree/octree_container.h>
 #include <pcl/octree/octree_search.h>
 
 #endif
