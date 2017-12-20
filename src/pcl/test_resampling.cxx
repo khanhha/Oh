@@ -196,8 +196,8 @@ int main()
 
 	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	UniformOctreeSampling<PointXYZ> sampler;
-	sampler.setSamplingResolution(5);
-	sampler.setSampleRadiusSearch(5);
+	sampler.setSamplingResolution(3);
+	sampler.setSampleRadiusSearch(3);
 	sampler.setOctreeResolution(5);
 	sampler.setInputCloud(cloud);
 	sampler.setInputNormalCloud(normal);

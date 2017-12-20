@@ -124,8 +124,8 @@ namespace pcl
 		double sampling_resolution_;
 		double sample_radius_search;
 		
-		Eigen::Vector3f sampling_size_;
-		Eigen::Array3f  inverse_sampling_size_;
+		Eigen::Vector3f  sampling_size_;
+		Eigen::Vector3f  inverse_sampling_size_;
 		
 		/** \brief The minimum and maximum bin coordinates, the number of divisions, and the division multiplier. */
 		Eigen::Vector3f min_b_, max_b_;
@@ -150,6 +150,7 @@ namespace pcl
 			else
 				return input_->points[idx].z - bmin.z();
 		}
+		void calcBounds(const std::vector<int> &indices, Eigen::Vector3f &bmin, Eigen::Vector3f &bmax);
 
 		inline void
 			initSamplingBounds(const Eigen::Vector3f &min_p, const Eigen::Vector3f &max_p)
@@ -158,8 +159,8 @@ namespace pcl
 			max_b_ = max_p;
 			// Compute the minimum and maximum bounding box values
 			for (size_t i = 0; i < 3; ++i) {
-				min_b_[i] = static_cast<int> (floor(min_p[i] * inverse_sampling_size_[i]));
-				max_b_[i] = static_cast<int> (floor(max_p[i] * inverse_sampling_size_[i]));
+				min_b_[i] = static_cast<int> (round(min_p[i] * inverse_sampling_size_[i]));
+				max_b_[i] = static_cast<int> (round(max_p[i] * inverse_sampling_size_[i]));
 			}
 		};
 
@@ -167,9 +168,9 @@ namespace pcl
 			mapSamplingCoord(const Eigen::Vector3f &in) const
 		{
 			Eigen::Vector3i ijk = Eigen::Vector3i::Zero();
-			ijk[0] = static_cast<int> (floor(in[0] * inverse_sampling_size_[0]));
-			ijk[1] = static_cast<int> (floor(in[1] * inverse_sampling_size_[1]));
-			ijk[2] = static_cast<int> (floor(in[2] * inverse_sampling_size_[2]));
+			ijk[0] = static_cast<int> (round(in[0] * inverse_sampling_size_[0]));
+			ijk[1] = static_cast<int> (round(in[1] * inverse_sampling_size_[1]));
+			ijk[2] = static_cast<int> (round(in[2] * inverse_sampling_size_[2]));
 			return ijk;
 		};
 	};

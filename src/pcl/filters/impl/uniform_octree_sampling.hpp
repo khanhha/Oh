@@ -30,31 +30,38 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 		const std::vector<int> &indices = container->getPointIndicesVector();
 
-		if (no_more)
-			return;
-		
-		if(indices.size() < 50)
-			continue;
-
-		no_more = true;
-
 		Vector3f node_bmin, node_bmax;
+#if 0
 		oc.getVoxelBounds(leafIter, node_bmin, node_bmax);
+#else
+		calcBounds(indices, node_bmin, node_bmax);
+#endif
+		test_node_bounds.push_back(std::make_pair(node_bmin, node_bmax));
+
+		//if (no_more)
+		//	return;
+		if(indices.size() < 10)
+			continue;
+		//no_more = true;
 
 		for (size_t i = 0; i < indices.size(); ++i)
 			test_node_points.push_back(input_->points[indices[i]].getVector3fMap());
 		
-		test_node_bounds.push_back(std::make_pair(node_bmin, node_bmax));
 
-		Vector3i node_bmin_i = mapSamplingCoord(node_bmin);
-		Vector3i node_bmax_i = mapSamplingCoord(node_bmax);
-		const size_t base_plane_norm_axis = findBasePlane(leaf);
-		const size_t u_axis = (base_plane_norm_axis + 1) % 3;
-		const size_t v_axis = (base_plane_norm_axis + 2) % 3;
-		const size_t width =  node_bmax_i[u_axis] - node_bmin_i[u_axis];
-		const size_t height = node_bmax_i[v_axis] - node_bmin_i[v_axis];
-		for (size_t i = 0; i < width; ++i) {
-			for (size_t j = 0; j < height; ++j) {
+		//Vector3i node_bmin_i = mapSamplingCoord(node_bmin);
+		//Vector3i node_bmax_i = mapSamplingCoord(node_bmax);
+		Vector3f snode_bmin = inverse_sampling_size_.array()*node_bmin.array();
+		Vector3f snode_bmax = inverse_sampling_size_.array()*node_bmax.array();
+		Vector3i node_bmin_i(ceil(snode_bmin[0]),  ceil(snode_bmin[1]), ceil(snode_bmin[2]));
+		Vector3i node_bmax_i(floor(snode_bmax[0]), floor(snode_bmax[1]), floor(snode_bmax[2]));
+		
+		const int base_plane_norm_axis = findBasePlane(leaf);
+		const int u_axis = (base_plane_norm_axis + 1) % 3;
+		const int v_axis = (base_plane_norm_axis + 2) % 3;
+		const int width =  node_bmax_i[u_axis] - node_bmin_i[u_axis];
+		const int height = node_bmax_i[v_axis] - node_bmin_i[v_axis];
+		for (int i = 0; i <= width; ++i) {
+			for (int j = 0; j <= height; ++j) {
 				Vector3i sam_co;
 				sam_co[u_axis] = node_bmin_i[u_axis] + i;
 				sam_co[v_axis] = node_bmin_i[v_axis] + j;
@@ -67,10 +74,10 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 				vector<float> radius_sqr_dsts;
 				searchRadiusOnPlane(indices, sampled_co, sample_radius_search * sample_radius_search, u_axis, v_axis, radius_indices, radius_sqr_dsts);
 
-				if (radius_indices.empty())
+				if (radius_indices.size() < 4)
 				{
-					sampled_co[base_plane_norm_axis] = 0.5f * (node_bmin[base_plane_norm_axis] + node_bmax[base_plane_norm_axis]);
-					test_sample_points_1.push_back(sampled_co);
+					//sampled_co[base_plane_norm_axis] = 0.5f * (node_bmin[base_plane_norm_axis] + node_bmax[base_plane_norm_axis]);
+					//test_sample_points_1.push_back(sampled_co);
 					continue;
 				}
 
@@ -142,5 +149,22 @@ size_t pcl::UniformOctreeSampling<PointT>::findBasePlane(const LeafNode *leaf) c
 	}
 
 	return max_axis;
+}
+
+template <typename PointT>
+void pcl::UniformOctreeSampling<PointT>::calcBounds(const std::vector<int> &indices, Eigen::Vector3f &bmin, Eigen::Vector3f &bmax)
+{
+	typename std::vector<int>::const_iterator it;
+	typename std::vector<int>::const_iterator it_end = indices.cend();
+
+	bmin[0] = bmin[1] = bmin[2] =  std::numeric_limits <float>::max();
+	bmax[0] = bmax[1] = bmax[2] = -std::numeric_limits <float>::max();
+
+	for (it = indices.cbegin(); it != it_end; ++it)
+	{
+		const Eigen::Vector3f& p = input_->at(*it).getVector3fMap();
+		bmin = bmin.array().min(p.array());
+		bmax = bmax.array().max(p.array());
+	}
 }
 #endif
