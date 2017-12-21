@@ -71,6 +71,7 @@ namespace pcl
 		using Filter<PointT>::getClassName;
 
 		typedef pcl::octree::OctreePointCloudNormal<PointT, Normal> OctreeNormal;
+		typedef typename OctreeNormal::Ptr OctreeNormalPtr;
 		typedef typename OctreeNormal::LeafNode LeafNode;
 	public:
 		typedef std::shared_ptr<UniformOctreeSampling<PointT> > Ptr;
@@ -130,7 +131,7 @@ namespace pcl
 		/** \brief The minimum and maximum bin coordinates, the number of divisions, and the division multiplier. */
 		Eigen::Vector3f min_b_, max_b_;
 		Eigen::Vector3i min_bi_, max_bi_;
-
+		OctreeNormalPtr _octree;
 		/** \brief Downsample a Point Cloud using a voxelized grid approach
 		* \param[out] output the resultant point cloud message
 		*/
@@ -150,6 +151,19 @@ namespace pcl
 			else
 				return input_->points[idx].z - bmin.z();
 		}
+
+		inline float interpolationWeight(const size_t &idx, const Eigen::Vector3f &p, const size_t &u, const size_t &v)
+		{
+			const Eigen::Vector3f &other_p = input_->points[idx].getVector3fMap();
+			const float du = (other_p[u] - p[u]);
+			const float dv = (other_p[v] - p[v]);
+			const float sqr_dst = du * du + dv*dv;
+			if (sqr_dst > 0)
+				return 1.0f / sqrt(sqr_dst);
+			else
+				return 1.0f;
+		}
+
 		void calcBounds(const std::vector<int> &indices, Eigen::Vector3f &bmin, Eigen::Vector3f &bmax);
 
 		inline void

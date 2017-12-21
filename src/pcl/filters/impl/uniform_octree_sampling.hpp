@@ -1,7 +1,6 @@
 #ifndef PCL_FILTERS_UNIFORM_OCTREE_SAMPLING_IMPL_H_
 #define PCL_FILTERS_UNIFORM_OCTREE_SAMPLING_IMPL_H_
 
-#include <pcl/octree/octree_pointcloud_normal.h>
 
 using namespace std;
 using namespace pcl;
@@ -10,21 +9,21 @@ using namespace Eigen;
 template <typename PointT>
 void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 {
-	OctreeNormal oc(octree_resolution_);
-	oc.setInputCloud(input_);
-	oc.enableDynamicDepth(50);
-	oc.setInputNormalCloud(input_normal_cloud_);
-	oc.setNormalThreshold(octree_normal_threshold);
-	oc.addPointsFromInputCloud();
+	_octree.reset(new OctreeNormal(octree_resolution_));
+	_octree->setInputCloud(input_);
+	_octree->enableDynamicDepth(50);
+	_octree->setInputNormalCloud(input_normal_cloud_);
+	_octree->setNormalThreshold(octree_normal_threshold);
+	_octree->addPointsFromInputCloud();
 
 	Vector3d bmin, bmax;
-	oc.getBoundingBox(bmin[0], bmin[1], bmin[1], bmax[0], bmax[1], bmax[2]);
+	_octree->getBoundingBox(bmin[0], bmin[1], bmin[1], bmax[0], bmax[1], bmax[2]);
 	initSamplingBounds(bmin.cast<float>(), bmax.cast<float>());
 
 	bool no_more = false;
 
-	OctreeNormal::LeafNodeIterator leafIter, leafEnd = oc.leaf_end();
-	for (leafIter = oc.leaf_begin(); leafIter != leafEnd; ++leafIter)
+	OctreeNormal::LeafNodeIterator leafIter, leafEnd = _octree->leaf_end();
+	for (leafIter = _octree->leaf_begin(); leafIter != leafEnd; ++leafIter)
 	{
 		OctreeNormal::LeafNode *leaf = static_cast<OctreeNormal::LeafNode*>(*leafIter);
 		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
@@ -86,9 +85,10 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 				float h = 0.0f;
 				for (size_t k = 0; k < radius_indices.size(); ++k)
 				{
-					float w = 1.0f / sqrt(radius_sqr_dsts[k]);
-					float h_tmp = heightBasePlane(indices[radius_indices[k]], base_plane_norm_axis, node_bmin);
-					assert(h_tmp >= 0.0f);
+					//float w = 1.0f / sqrt(radius_sqr_dsts[k]);
+					const float w = interpolationWeight(radius_indices[k], sampled_co, u_axis, v_axis);
+					const float h_tmp = heightBasePlane(radius_indices[k], base_plane_norm_axis, node_bmin);
+					//assert(h_tmp >= 0.0f);
 					total_weight += w;
 					h += h_tmp * w;
 				}
@@ -106,6 +106,8 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 template <typename PointT>
 size_t pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(const std::vector<int> &all_indices, const Vector3f &search_p, float sqr_radius, size_t u, size_t v, std::vector<int> &ret_indices, std::vector<float> &ret_sqrt_dst) const
 {
+#define ONLY_WITHIN_NODE
+#ifdef ONLY_WITHIN_NODE
 	for (int i = 0; i < all_indices.size(); ++i)
 	{
 		const Vector3f &p = input_->points[all_indices[i]].getVector3fMap();
@@ -114,12 +116,18 @@ size_t pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(const std::vector
 		float sqr_dst = du * du + dv * dv;
 		if (sqr_dst <= sqr_radius)
 		{
-			ret_indices.push_back(i);
+			ret_indices.push_back(all_indices[i]);
 			ret_sqrt_dst.push_back(sqr_dst);
 		}
 	}
-
 	return ret_indices.size();
+#else
+	PointT p;
+	p.x = search_p[0]; p.y = search_p[1]; p.z = search_p[2];
+	_octree->radiusSearch(p, sqrt(sqr_radius), ret_indices, ret_sqrt_dst);
+	return ret_indices.size();
+#endif
+
 }
 
 template <typename PointT>
