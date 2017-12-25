@@ -140,7 +140,10 @@ namespace pcl
 		size_t 
 			findBasePlane(const LeafNode *node) const;
 		size_t 
-			searchRadiusOnPlane(const std::vector<int> &all_indices, const Eigen::Vector3f &search_p, float sqr_radius, size_t u, size_t v, std::vector<int> &ret_indices, std::vector<float> &ret_sqrt_dst) const;
+			searchRadiusOnPlane(const std::vector<int> &all_indices,
+				const Eigen::Vector3f &search_p, float radius, size_t u, size_t v, size_t height_axis,
+				const Eigen::Vector3f &bmin, const Eigen::Vector3f &bmax, const Eigen::Vector3f &leaf_bmin,
+				std::vector<Eigen::Vector3f> &ret_vertices, std::vector<float> &ret_sqrt_dst) const;
 		inline float
 			heightBasePlane(const size_t &idx, const size_t &axis, const Eigen::Vector3f &bmin)
 		{

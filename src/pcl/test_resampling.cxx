@@ -186,9 +186,9 @@ vtkSmartPointer<vtkActor> pcl_build_point_cloud_actor(PointCloud<PointXYZ>::Ptr 
 
 int main()
 {
-
-
-	string filename = "normal_lucy_none-Slice-54_center_vn.obj";
+	//string filename = "Armadillo.obj";
+	//string filename = "normal_oh_none_repaired.obj";
+	string filename = "lucy_none-Slice-54_center_vn.obj";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
 	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
@@ -198,15 +198,15 @@ int main()
 	UniformOctreeSampling<PointXYZ> sampler;
 	sampler.setSamplingResolution(3);
 	sampler.setSampleRadiusSearch(3);
-	sampler.setOctreeResolution(5);
+	sampler.setOctreeResolution(1);
 	sampler.setInputCloud(cloud);
 	sampler.setInputNormalCloud(normal);
 	sampler.setOctreeNormalThreshold(0.8);
 	sampler.filter(*out_cloud);
 
-	auto sample_actor = vtk_build_points_actor(sampler.test_sample_points, Vector3f(1.0f, 0.0f, 0.0f), 2.0f);
-	auto sample_1_actor = vtk_build_points_actor(sampler.test_sample_points_1, Vector3f(0.0f, 1.0f, 1.0f), 2.0f);
-	auto node_point_actor = vtk_build_points_actor(sampler.test_node_points, Vector3f(1.0f, 1.0f, 0.0f), 2.0f);
+	auto sample_actor = vtk_build_points_actor(sampler.test_sample_points, Vector3f(1.0f, 0.0f, 0.0f), 3.0f);
+	auto sample_1_actor = vtk_build_points_actor(sampler.test_sample_points_1, Vector3f(0.0f, 1.0f, 1.0f), 3.0f);
+	auto node_point_actor = vtk_build_points_actor(sampler.test_node_points, Vector3f(1.0f, 1.0f, 0.0f), 3.0f);
 	auto node_bb_actor = vtk_build_box_actor(sampler.test_node_bounds, Vector3f(0.3f, .6f, 0.1f));
 	auto cloud_actor = pcl_build_point_cloud_actor(cloud);
 
@@ -216,7 +216,7 @@ int main()
 
 	ren1->AddActor(sample_actor);
 	ren1->AddActor(sample_1_actor);
-	ren1->AddActor(cloud_actor);
+	//ren1->AddActor(cloud_actor);
 	ren1->AddActor(node_point_actor);
 	ren1->AddActor(node_bb_actor);
 
