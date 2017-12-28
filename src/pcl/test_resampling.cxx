@@ -51,6 +51,8 @@ VTK_MODULE_INIT(vtkInteractionStyle);
 #include <pcl/io/obj_loader.h>
 #include <pcl/filters/uniform_sampling.h>
 #include <pcl/filters/uniform_octree_sampling.h>
+#include <pcl/filters/weight_sampling.h>
+
 
 #include <Eigen/Dense>
 
@@ -212,7 +214,8 @@ vtkSmartPointer<vtkActor> pcl_build_point_cloud_actor(PointCloud<PointXYZ>::Ptr 
 	return vtk_build_points_actor(points, Vector3f(1.0f, 1.0f, 1.0f), 2.0f);
 }
 
-int main()
+vtkRenderer *g_ren1 = nullptr;
+void test_octree_resampling()
 {
 	string filename = "Armadillo.obj";
 	//string filename = "normal_oh_none_repaired.obj";
@@ -240,20 +243,79 @@ int main()
 	auto cloud_actor = pcl_build_point_cloud_actor(cloud);
 	auto node_text_actors = vtk_build_number_text(sampler.test_node_ids);
 
-	vtkRenderer *ren1 = vtkRenderer::New();
-	ren1->SetBackground(0.4, 0.4, 0.4);
+	g_ren1->SetBackground(0.4, 0.4, 0.4);
 
-	ren1->AddActor(sample_actor);
-	ren1->AddActor(sample_1_actor);
-	ren1->AddActor(sample_2_actor);
-	ren1->AddActor(cloud_actor);
-	ren1->AddActor(node_point_actor);
-	ren1->AddActor(node_bb_actor);
+	g_ren1->AddActor(sample_actor);
+	g_ren1->AddActor(sample_1_actor);
+	g_ren1->AddActor(sample_2_actor);
+	g_ren1->AddActor(cloud_actor);
+	g_ren1->AddActor(node_point_actor);
+	g_ren1->AddActor(node_bb_actor);
 	for (auto ac : node_text_actors)
-		ren1->AddViewProp(ac);
+		g_ren1->AddViewProp(ac);
+}
+
+void test_weight_sampling()
+{
+	string filename = "Armadillo.obj";
+	//string filename = "normal_oh_none_repaired.obj";
+	//string filename = "lucy_none-Slice-54_center_vn.obj";
+	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
+	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
+	io::cloud_load_point_cloud(basepath + filename, basepath, cloud, normal);
+
+	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	WeightSampling<PointXYZ> sampler;
+	sampler.setInputCloud(cloud);
+	sampler.filter(*out_cloud);
+
+
+	auto cloud_actor = pcl_build_point_cloud_actor(cloud);
+	auto sample_actor = vtk_build_points_actor(sampler.test_sample_points, Vector3f(1.0f, 0.0f, 0.0f), 3.0f);
+	g_ren1->AddActor(cloud_actor);
+	g_ren1->AddActor(sample_actor);
+}
+
+void test_uniform_sampling()
+{
+	string filename = "Armadillo.obj";
+	//string filename = "normal_oh_none_repaired.obj";
+	//string filename = "lucy_none-Slice-54_center_vn.obj";
+	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
+	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
+	io::cloud_load_point_cloud(basepath + filename, basepath, cloud, normal);
+
+	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	UniformSampling<PointXYZ> sampler;
+	sampler.setInputCloud(cloud);
+	sampler.setRadiusSearch(1.5);
+	sampler.filter(*out_cloud);
+
+
+	std::vector<Vector3f> sampler_points;
+	for (size_t i = 0; i < out_cloud->size(); ++i)
+	{
+		sampler_points.push_back(out_cloud->points[i].getArray3fMap());
+	}
+
+	auto cloud_actor = pcl_build_point_cloud_actor(cloud);
+	auto sample_actor = vtk_build_points_actor(sampler_points, Vector3f(1.0f, 0.0f, 0.0f), 3.0f);
+	g_ren1->AddActor(cloud_actor);
+	g_ren1->AddActor(sample_actor);
+}
+
+int main()
+{
+	g_ren1 = vtkRenderer::New();
+	g_ren1->SetBackground(0.4, 0.4, 0.4);
+
+	//test_weight_sampling();
+	test_uniform_sampling();
 
 	vtkRenderWindow *renWin = vtkRenderWindow::New();
-	renWin->AddRenderer(ren1);
+	renWin->AddRenderer(g_ren1);
 	renWin->SetSize(800, 600);
 		
 	vtkRenderWindowInteractor *iren = vtkRenderWindowInteractor::New();
