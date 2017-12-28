@@ -18,6 +18,9 @@ PURPOSE.  See the above copyright notice for more information.
 // First include the required header files for the VTK classes we are using.
 #include <vtkAutoInit.h>
 VTK_MODULE_INIT(vtkRenderingOpenGL);
+VTK_MODULE_INIT(vtkRenderingFreeType);
+VTK_MODULE_INIT(vtkInteractionStyle);
+
 #include <vtkVersion.h>
 #include <vtkSmartPointer.h>
 #include <vtkPoints.h>
@@ -33,7 +36,11 @@ VTK_MODULE_INIT(vtkRenderingOpenGL);
 #include <vtkRenderWindowInteractor.h>
 #include <vtkVertexGlyphFilter.h>
 #include <vtkProperty.h>
-#include "vtkInteractorStyleTrackballCamera.h"
+#include <vtkInteractorStyleTrackballCamera.h>
+#include <vtkTextActor.h>
+#include <vtkTextProperty.h>
+#include <vtkTextActor3D.h>
+
 // For compatibility with new VTK generic data arrays
 #ifdef vtkGenericDataArray_h
 #define InsertNextTupleValue InsertNextTypedTuple
@@ -50,6 +57,9 @@ VTK_MODULE_INIT(vtkRenderingOpenGL);
 using namespace  std;
 using namespace  Eigen;
 using namespace  pcl;
+
+typedef vtkSmartPointer<vtkActor> ActorPtr;
+typedef vtkSmartPointer<vtkTextActor3D> Actor3DPtr;
 
 void test_uniform_sample()
 {
@@ -173,6 +183,24 @@ vtkSmartPointer<vtkActor> vtk_build_points_actor(std::vector<Vector3f> &points, 
 	return actor;
 }
 
+std::vector<Actor3DPtr> vtk_build_number_text(std::vector<std::pair<Eigen::Vector3f, int>> ids)
+{
+	std::vector<Actor3DPtr> texts;
+	for (int i = 0; i < ids.size(); ++i)
+	{
+		Actor3DPtr actor = Actor3DPtr::New();
+		stringstream ss; ss << ids[i].second;
+		string str = ss.str();
+		actor->SetInput(str.c_str());
+		Eigen::Vector3d p = ids[i].first.cast<double>();
+		actor->SetPosition(p.data());
+		actor->SetScale(0.07);
+		
+		texts.push_back(actor);
+	}
+	return texts;
+}
+
 vtkSmartPointer<vtkActor> pcl_build_point_cloud_actor(PointCloud<PointXYZ>::Ptr cloud)
 {
 	std::vector<Vector3f> points(cloud->size());
@@ -186,9 +214,9 @@ vtkSmartPointer<vtkActor> pcl_build_point_cloud_actor(PointCloud<PointXYZ>::Ptr 
 
 int main()
 {
-	//string filename = "Armadillo.obj";
+	string filename = "Armadillo.obj";
 	//string filename = "normal_oh_none_repaired.obj";
-	string filename = "lucy_none-Slice-54_center_vn.obj";
+	//string filename = "lucy_none-Slice-54_center_vn.obj";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
 	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
@@ -196,9 +224,9 @@ int main()
 
 	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	UniformOctreeSampling<PointXYZ> sampler;
-	sampler.setSamplingResolution(3);
-	sampler.setSampleRadiusSearch(3);
-	sampler.setOctreeResolution(1);
+	sampler.setSamplingResolution(1);
+	sampler.setSampleRadiusSearch(1);
+	sampler.setOctreeResolution(0.005);
 	sampler.setInputCloud(cloud);
 	sampler.setInputNormalCloud(normal);
 	sampler.setOctreeNormalThreshold(0.8);
@@ -206,19 +234,23 @@ int main()
 
 	auto sample_actor = vtk_build_points_actor(sampler.test_sample_points, Vector3f(1.0f, 0.0f, 0.0f), 3.0f);
 	auto sample_1_actor = vtk_build_points_actor(sampler.test_sample_points_1, Vector3f(0.0f, 1.0f, 1.0f), 3.0f);
+	auto sample_2_actor = vtk_build_points_actor(sampler.test_sample_points_2, Vector3f(0.0f, 0.0f, 1.0f), 3.0f);
 	auto node_point_actor = vtk_build_points_actor(sampler.test_node_points, Vector3f(1.0f, 1.0f, 0.0f), 3.0f);
 	auto node_bb_actor = vtk_build_box_actor(sampler.test_node_bounds, Vector3f(0.3f, .6f, 0.1f));
 	auto cloud_actor = pcl_build_point_cloud_actor(cloud);
-
+	auto node_text_actors = vtk_build_number_text(sampler.test_node_ids);
 
 	vtkRenderer *ren1 = vtkRenderer::New();
 	ren1->SetBackground(0.4, 0.4, 0.4);
 
 	ren1->AddActor(sample_actor);
 	ren1->AddActor(sample_1_actor);
-	//ren1->AddActor(cloud_actor);
+	ren1->AddActor(sample_2_actor);
+	ren1->AddActor(cloud_actor);
 	ren1->AddActor(node_point_actor);
 	ren1->AddActor(node_bb_actor);
+	for (auto ac : node_text_actors)
+		ren1->AddViewProp(ac);
 
 	vtkRenderWindow *renWin = vtkRenderWindow::New();
 	renWin->AddRenderer(ren1);
@@ -227,8 +259,7 @@ int main()
 	vtkRenderWindowInteractor *iren = vtkRenderWindowInteractor::New();
 	iren->SetRenderWindow(renWin);
 
-	vtkInteractorStyleTrackballCamera *style =
-		vtkInteractorStyleTrackballCamera::New();
+	vtkInteractorStyleTrackballCamera *style = vtkInteractorStyleTrackballCamera::New();
 	iren->SetInteractorStyle(style);
 
 	iren->Initialize();

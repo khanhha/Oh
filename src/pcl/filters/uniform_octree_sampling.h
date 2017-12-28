@@ -115,8 +115,10 @@ namespace pcl
 	public:
 		std::vector<Eigen::Vector3f> test_sample_points;
 		std::vector<Eigen::Vector3f> test_sample_points_1;
+		std::vector<Eigen::Vector3f> test_sample_points_2;
 		std::vector<Eigen::Vector3f> test_node_points;
 		std::vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> test_node_bounds;
+		std::vector<std::pair<Eigen::Vector3f, int>>			 test_node_ids;
 	protected:
 		/** \brief Simple structure to hold an nD centroid and the number of points in a leaf. */
 		NormalCloudconstPtr input_normal_cloud_;
@@ -131,19 +133,21 @@ namespace pcl
 		/** \brief The minimum and maximum bin coordinates, the number of divisions, and the division multiplier. */
 		Eigen::Vector3f min_b_, max_b_;
 		Eigen::Vector3i min_bi_, max_bi_;
-		OctreeNormalPtr _octree;
+		OctreeNormalPtr octree_;
 		/** \brief Downsample a Point Cloud using a voxelized grid approach
 		* \param[out] output the resultant point cloud message
 		*/
 		void
 			applyFilter(PointCloud &output);
+		void
+			averagePlane(const LeafNode *node, Eigen::Vector3f &p, Eigen::Vector3f &n) const;
 		size_t 
-			findBasePlane(const LeafNode *node) const;
-		size_t 
-			searchRadiusOnPlane(const std::vector<int> &all_indices,
+			findBasePlane(const Eigen::Vector3f &avg_normal) const;
+		bool
+			searchRadiusOnPlane(const Eigen::Vector3f &plane_n, const Eigen::Vector3f &plane_p,
 				const Eigen::Vector3f &search_p, float radius, size_t u, size_t v, size_t height_axis,
-				const Eigen::Vector3f &bmin, const Eigen::Vector3f &bmax, const Eigen::Vector3f &leaf_bmin,
-				std::vector<Eigen::Vector3f> &ret_vertices, std::vector<float> &ret_sqrt_dst) const;
+				const Eigen::Vector3f &leaf_bmin, const Eigen::Vector3f &leaf_bmax,
+				std::vector<float> &ret_heights, std::vector<float> &ret_sqrt_dst);
 		inline float
 			heightBasePlane(const size_t &idx, const size_t &axis, const Eigen::Vector3f &bmin)
 		{
@@ -191,6 +195,7 @@ namespace pcl
 			return ijk;
 		};
 	};
+
 }
 
 #ifdef PCL_NO_PRECOMPILE
