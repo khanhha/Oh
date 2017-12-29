@@ -30,19 +30,17 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 	size_t test_cnt = 0;
 	for (leafIter = octree_->leaf_begin(); leafIter != leafEnd; ++leafIter, test_cnt++)
 	{
-		//if(test_cnt != 30)
+		//if(test_cnt != 182)
 		//	continue;
 
 		OctreeNormal::LeafNode *leaf = static_cast<OctreeNormal::LeafNode*>(*leafIter);
 		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 		const std::vector<int> &indices = container->getPointIndicesVector();
 
+		Vector3f voxel_bmin, voxel_bmax;
+		octree_->getVoxelBounds(leafIter, voxel_bmin, voxel_bmax);
 		Vector3f node_bmin, node_bmax;
-#if 1
-		octree_->getVoxelBounds(leafIter, node_bmin, node_bmax);
-#else
 		calcBounds(indices, node_bmin, node_bmax);
-#endif
 
 //#define	TEST_VOXEL_BOUNDS
 #ifdef TEST_VOXEL_BOUNDS
@@ -51,14 +49,14 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 		test_node_bounds.push_back(std::make_pair(voxel_min, voxel_max));
 #endif
 
-		//test_node_bounds.push_back(std::make_pair(node_bmin, node_bmax));
-		test_node_ids.push_back(std::make_pair(0.5f*(node_bmin + node_bmax), test_cnt));
+		test_node_bounds.push_back(std::make_pair(voxel_bmin, voxel_bmax));
+		//test_node_ids.push_back(std::make_pair(0.5f*(voxel_bmin + voxel_bmax), test_cnt));
 
-		for (size_t i = 0; i < indices.size(); ++i)
-			test_node_points.push_back(input_->points[indices[i]].getVector3fMap());
+		//for (size_t i = 0; i < indices.size(); ++i)
+		//	test_node_points.push_back(input_->points[indices[i]].getVector3fMap());
 
-		Vector3f snode_bmin = inverse_sampling_size_.array()*node_bmin.array();
-		Vector3f snode_bmax = inverse_sampling_size_.array()*node_bmax.array();
+		Vector3f snode_bmin = inverse_sampling_size_.array()*voxel_bmin.array();
+		Vector3f snode_bmax = inverse_sampling_size_.array()*voxel_bmax.array();
 		Vector3f node_bmin_i(ceil(snode_bmin[0]),  ceil(snode_bmin[1]), ceil(snode_bmin[2]));
 		Vector3f node_bmax_i(floor(snode_bmax[0]), floor(snode_bmax[1]), floor(snode_bmax[2]));
 		
@@ -79,13 +77,24 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 		if(indices.size() < 3)
 			continue;
 
-		std::vector<Vector3f> leaf_points;
-		for (size_t i = 0; i < indices.size(); ++i)
-			leaf_points.push_back(input_->points[indices[i]].getVector3fMap());
+		std::vector<Vector3f> extend_leaf_points;
+		Vector3f leaf_center = 0.5f*(node_bmin + node_bmax);
+		float radius_search = 0.5*(node_bmax - node_bmin).norm();
+		radius_search = radius_search + 1.5 * sampling_resolution_;
+		searchPointsRadius(leaf_center, radius_search, &extend_leaf_points, nullptr);
 
 		std::vector<Vector3f> convex_hull;
-		SimpleHull2D(leaf_points, convex_hull, u_axis, v_axis);
+		//int hull_size = SimpleHull2D(extend_leaf_points, convex_hull, u_axis, v_axis);
+		//chainHull_2D(extend_leaf_points, convex_hull, u_axis, v_axis);
+		int hull_size = buildConvexHull(extend_leaf_points, convex_hull, u_axis, v_axis);
 		convex_hull.push_back(convex_hull[0]); //v[n] = v[0]. close the convex hull
+
+		//test_sample_points_1 = extend_leaf_points;
+		//test_sample_points_2 = convex_hull;
+		//for (auto &p : test_sample_points_1)
+		//	p[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis];
+		//for (auto &p : test_sample_points_2)
+		//	p[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis];
 
 		size_t inside_bounds_cnt = 0;
 		for (int i = 0; i <= width; ++i) {
@@ -93,25 +102,25 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 				Vector3f sampled_co;
 				sampled_co[u_axis] = node_bmin_i[u_axis] + i * sampling_resolution_;
 				sampled_co[v_axis] = node_bmin_i[v_axis] + j * sampling_resolution_;
+				sampled_co[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis];
 				
+				//test_sample_points_1.push_back(sampled_co);
+
 				if (!IsPointInsidePoly(sampled_co, convex_hull, convex_hull.size() - 1, u_axis, v_axis))
 				{
-					sampled_co[base_plane_norm_axis] = node_bmin[base_plane_norm_axis];
-					test_sample_points_2.push_back(sampled_co);
+					sampled_co[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis];
 					continue;
 				}
 
 				radius_heights.clear(); radius_sqr_dsts.clear();
 				bool inside_bounds = searchRadiusOnPlane(node_avg_norm, node_avg_center, 
 					sampled_co, sample_radius_search, u_axis, v_axis, base_plane_norm_axis,
-					node_bmin, node_bmax, radius_heights, radius_sqr_dsts);
+					voxel_bmin, voxel_bmax, radius_heights, radius_sqr_dsts);
 				
 				if(!inside_bounds)
 					continue;
 
 				inside_bounds_cnt++;
-
-				//test_sample_points_1.push_back(sampled_co);
 
 				//interpolate
 				float total_weight = 0.0f;
@@ -127,7 +136,7 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 
 				h = h / total_weight;
 
-				sampled_co[base_plane_norm_axis] = node_bmin[base_plane_norm_axis] + h;
+				sampled_co[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis] + h;
 
 				test_sample_points.push_back(sampled_co);
 			}
@@ -136,7 +145,7 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 		float percent = static_cast<float>(inside_bounds_cnt) / static_cast<float>((width+1)*(height+1));
 		if (percent < 0.9)
 		{
-			test_node_bounds.push_back(std::make_pair(node_bmin, node_bmax));
+			//test_node_bounds.push_back(std::make_pair(voxel_bmin, voxel_bmax));
 		}
 	}
 }
@@ -209,11 +218,6 @@ inline bool planeRayInteraction(const Eigen::Vector3f &plane_n, const Eigen::Vec
 	}
 }
 
-inline float isLeft(const Vector3f & P0, const Vector3f &P1, const Vector3f &P2, const size_t &u, const size_t &v)
-{
-	return (P1[u] - P0[u])*(P2[v] - P0[v]) - (P2[u] - P0[u])*(P1[v] - P0[v]);
-}
-
 //adapted from  http://geomalgorithms.com/a03-_inclusion.html
 // cn_PnPoly(): crossing number test for a point in a polygon
 //      Input:   P = a point,
@@ -237,51 +241,41 @@ inline int IsPointInsidePoly(const Vector3f &P, const std::vector<Vector3f> &V, 
 	return (cn & 1);    // 0 if even (out), and 1 if  odd (in)
 }
 
-//adapted from http://geomalgorithms.com/a12-_hull-3.html
-int SimpleHull2D(const std::vector<Vector3f> &P, std::vector<Vector3f> &H,  const size_t &u, const size_t &v)
+// 2D cross product of OA and OB vectors, i.e. z-component of their 3D cross product.
+// Returns a positive value, if OAB makes a counter-clockwise turn,
+// negative for clockwise turn, and zero if the points are collinear.
+inline float cross(const Vector3f &O, const Vector3f &A, const Vector3f &B, size_t u, size_t v)
 {
-	size_t n = P.size();
-	// initialize a deque D[] from bottom to top so that the
-	// 1st three vertices of P[] are a ccw triangle
-	std::vector<Vector3f> D(2*n+1);
-	int bot = n - 2, top = bot + 3;    // initial bottom and top deque indices
-	D[bot] = D[top] = P[2];        // 3rd vertex is at both bot and top
-	if (isLeft(P[0], P[1], P[2], u, v) > 0) {
-		D[bot + 1] = P[0];
-		D[bot + 2] = P[1];           // ccw vertices are: 2,0,1,2
-	}
-	else {
-		D[bot + 1] = P[1];
-		D[bot + 2] = P[0];           // ccw vertices are: 2,1,0,2
-	}
-
-	// compute the hull on the deque D[]
-	for (int i = 3; i < n; i++) {   // process the rest of vertices
-									// test if next vertex is inside the deque hull
-		if ((isLeft(D[bot], D[bot + 1], P[i], u, v) > 0) &&
-			(isLeft(D[top - 1], D[top], P[i], u, v) > 0))
-			continue;         // skip an interior vertex
-
-							  // incrementally add an exterior vertex to the deque hull
-							  // get the rightmost tangent at the deque bot
-		while (isLeft(D[bot], D[bot + 1], P[i], u, v) <= 0)
-			++bot;                 // remove bot of deque
-		D[--bot] = P[i];           // insert P[i] at bot of deque
-
-								   // get the leftmost tangent at the deque top
-		while (isLeft(D[top - 1], D[top], P[i], u, v) <= 0)
-			--top;                 // pop top of deque
-		D[++top] = P[i];           // push P[i] onto top of deque
-	}
-
-	// transcribe deque D[] to the output hull array H[]
-	int h;        // hull vertex counter
-	for (h = 0; h <= (top - bot); h++)
-		H.push_back(D[bot + h]);
-
-	return h - 1;
+	return (A[u] - O[u]) * (B[v] - O[v]) - (A[v] - O[v]) * (B[u] - O[u]);
 }
 
+// Returns a list of points on the convex hull in counter-clockwise order.
+// Note: the last point in the returned list is the same as the first one.
+size_t buildConvexHull(vector<Vector3f> &P, std::vector<Vector3f> &H, size_t u, size_t v)
+{
+	int n = P.size(), k = 0;
+	if (n == 1) return P.size();
+	H.resize(2 * n);
+
+	// Sort points lexicographically
+	std::sort(P.begin(), P.end(), [&](const Vector3f &a, const Vector3f &b) {return a[u] < b[u] || (a[u] == b[u] && a[v] < b[v]);});
+
+	// Build lower hull
+	for (int i = 0; i < n; ++i) {
+		while (k >= 2 && cross(H[k - 2], H[k - 1], P[i], u, v) <= 0) k--;
+		H[k++] = P[i];
+	}
+
+	// Build upper hull
+	for (int i = n - 2, t = k + 1; i >= 0; i--) {
+		while (k >= t && cross(H[k - 2], H[k - 1], P[i], u, v) <= 0) k--;
+		H[k++] = P[i];
+	}
+
+	H.resize(k - 1);
+
+	return H.size();
+}
 
 template <typename PointT>
 bool pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(
@@ -298,7 +292,7 @@ bool pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(
 	Vector3f search_p_3d;
 	assert(planeRayInteraction(plane_n, plane_p, on_lower_plane, dir, search_p_3d));
 
-#if 0
+#if 1
 	float intersect_height = search_p_3d[height_axis] - leaf_bmin[height_axis];
 	if (intersect_height < 0 || intersect_height > (leaf_bmax[height_axis] - leaf_bmin[height_axis]))
 		return false;
@@ -321,6 +315,22 @@ bool pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(
 	}
 
 	return true;
+}
+
+template <typename PointT>
+size_t pcl::UniformOctreeSampling<PointT>::searchPointsRadius(const Eigen::Vector3f &center, float radius, std::vector<Eigen::Vector3f> *points, std::vector<float> *dsts)
+{
+	std::vector<int> indices_3d;
+	std::vector<float> dst_3d;
+	PointT p; p.x = center[0]; p.y = center[1]; p.z = center[2];
+	int npoints = octree_->radiusSearch(p, radius, indices_3d, dst_3d);
+	for (int i = 0; i < npoints; ++i)
+		if (points)
+			points->push_back(input_->points[indices_3d[i]].getVector3fMap());
+	if (dsts)
+		*dsts = std::move(dst_3d);
+
+	return indices_3d.size();
 }
 
 template <typename PointT>
@@ -377,4 +387,6 @@ void pcl::UniformOctreeSampling<PointT>::calcBounds(const std::vector<int> &indi
 		bmax = bmax.array().max(p.array());
 	}
 }
+
+
 #endif

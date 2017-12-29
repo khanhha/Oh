@@ -148,6 +148,7 @@ namespace pcl
 				const Eigen::Vector3f &search_p, float radius, size_t u, size_t v, size_t height_axis,
 				const Eigen::Vector3f &leaf_bmin, const Eigen::Vector3f &leaf_bmax,
 				std::vector<float> &ret_heights, std::vector<float> &ret_sqrt_dst);
+
 		inline float
 			heightBasePlane(const size_t &idx, const size_t &axis, const Eigen::Vector3f &bmin)
 		{
@@ -158,6 +159,8 @@ namespace pcl
 			else
 				return input_->points[idx].z - bmin.z();
 		}
+
+		size_t searchPointsRadius(const Eigen::Vector3f &center, float radius, std::vector<Eigen::Vector3f> *points, std::vector<float> *dsts);
 
 		inline float interpolationWeight(const size_t &idx, const Eigen::Vector3f &p, const size_t &u, const size_t &v)
 		{
@@ -195,6 +198,7 @@ namespace pcl
 			return ijk;
 		};
 	};
+
 
 }
 
