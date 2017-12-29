@@ -30,8 +30,9 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 	size_t test_cnt = 0;
 	for (leafIter = octree_->leaf_begin(); leafIter != leafEnd; ++leafIter, test_cnt++)
 	{
-		//if(test_cnt != 8634)
+		//if(test_cnt != 30)
 		//	continue;
+
 		OctreeNormal::LeafNode *leaf = static_cast<OctreeNormal::LeafNode*>(*leafIter);
 		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 		const std::vector<int> &indices = container->getPointIndicesVector();
@@ -51,7 +52,7 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 #endif
 
 		//test_node_bounds.push_back(std::make_pair(node_bmin, node_bmax));
-		//test_node_ids.push_back(std::make_pair(0.5f*(node_bmin + node_bmax), test_cnt));
+		test_node_ids.push_back(std::make_pair(0.5f*(node_bmin + node_bmax), test_cnt));
 
 		for (size_t i = 0; i < indices.size(); ++i)
 			test_node_points.push_back(input_->points[indices[i]].getVector3fMap());
@@ -75,6 +76,17 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 		if (test_size[u_axis] < 0.0f && test_size[v_axis] < 0.0f)
 			continue;
 
+		if(indices.size() < 3)
+			continue;
+
+		std::vector<Vector3f> leaf_points;
+		for (size_t i = 0; i < indices.size(); ++i)
+			leaf_points.push_back(input_->points[indices[i]].getVector3fMap());
+
+		std::vector<Vector3f> convex_hull;
+		SimpleHull2D(leaf_points, convex_hull, u_axis, v_axis);
+		convex_hull.push_back(convex_hull[0]); //v[n] = v[0]. close the convex hull
+
 		size_t inside_bounds_cnt = 0;
 		for (int i = 0; i <= width; ++i) {
 			for (int j = 0; j <= height; ++j) {
@@ -82,6 +94,13 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 				sampled_co[u_axis] = node_bmin_i[u_axis] + i * sampling_resolution_;
 				sampled_co[v_axis] = node_bmin_i[v_axis] + j * sampling_resolution_;
 				
+				if (!IsPointInsidePoly(sampled_co, convex_hull, convex_hull.size() - 1, u_axis, v_axis))
+				{
+					sampled_co[base_plane_norm_axis] = node_bmin[base_plane_norm_axis];
+					test_sample_points_2.push_back(sampled_co);
+					continue;
+				}
+
 				radius_heights.clear(); radius_sqr_dsts.clear();
 				bool inside_bounds = searchRadiusOnPlane(node_avg_norm, node_avg_center, 
 					sampled_co, sample_radius_search, u_axis, v_axis, base_plane_norm_axis,
@@ -190,6 +209,80 @@ inline bool planeRayInteraction(const Eigen::Vector3f &plane_n, const Eigen::Vec
 	}
 }
 
+inline float isLeft(const Vector3f & P0, const Vector3f &P1, const Vector3f &P2, const size_t &u, const size_t &v)
+{
+	return (P1[u] - P0[u])*(P2[v] - P0[v]) - (P2[u] - P0[u])*(P1[v] - P0[v]);
+}
+
+//adapted from  http://geomalgorithms.com/a03-_inclusion.html
+// cn_PnPoly(): crossing number test for a point in a polygon
+//      Input:   P = a point,
+//               V[] = vertex points of a polygon V[n+1] with V[n]=V[0]
+//      Return:  0 = outside, 1 = inside
+// This code is patterned after [Franklin, 2000]
+inline int IsPointInsidePoly(const Vector3f &P, const std::vector<Vector3f> &V, const size_t &n, const size_t &u, const size_t &v)
+{
+	size_t    cn = 0;    // the  crossing number counter
+	// loop through all edges of the polygon
+	for (int i = 0; i < n; i++) {    // edge from V[i]  to V[i+1]
+		if (((V[i][v] <= P[v]) && (V[i + 1][v] > P[v]))     // an upward crossing
+			|| ((V[i][v] > P[v]) && (V[i + 1][v] <= P[v]))) { // a downward crossing
+														  // compute  the actual edge-ray intersect x-coordinate
+			float vt = (float)(P[v] - V[i][v]) / (V[i + 1][v] - V[i][v]);
+			if (P[u] < V[i][u] + vt * (V[i + 1][u] - V[i][u])) // P[u] < intersect
+				++cn;   // a valid crossing of y=P.y right of P.x
+		}
+	}
+
+	return (cn & 1);    // 0 if even (out), and 1 if  odd (in)
+}
+
+//adapted from http://geomalgorithms.com/a12-_hull-3.html
+int SimpleHull2D(const std::vector<Vector3f> &P, std::vector<Vector3f> &H,  const size_t &u, const size_t &v)
+{
+	size_t n = P.size();
+	// initialize a deque D[] from bottom to top so that the
+	// 1st three vertices of P[] are a ccw triangle
+	std::vector<Vector3f> D(2*n+1);
+	int bot = n - 2, top = bot + 3;    // initial bottom and top deque indices
+	D[bot] = D[top] = P[2];        // 3rd vertex is at both bot and top
+	if (isLeft(P[0], P[1], P[2], u, v) > 0) {
+		D[bot + 1] = P[0];
+		D[bot + 2] = P[1];           // ccw vertices are: 2,0,1,2
+	}
+	else {
+		D[bot + 1] = P[1];
+		D[bot + 2] = P[0];           // ccw vertices are: 2,1,0,2
+	}
+
+	// compute the hull on the deque D[]
+	for (int i = 3; i < n; i++) {   // process the rest of vertices
+									// test if next vertex is inside the deque hull
+		if ((isLeft(D[bot], D[bot + 1], P[i], u, v) > 0) &&
+			(isLeft(D[top - 1], D[top], P[i], u, v) > 0))
+			continue;         // skip an interior vertex
+
+							  // incrementally add an exterior vertex to the deque hull
+							  // get the rightmost tangent at the deque bot
+		while (isLeft(D[bot], D[bot + 1], P[i], u, v) <= 0)
+			++bot;                 // remove bot of deque
+		D[--bot] = P[i];           // insert P[i] at bot of deque
+
+								   // get the leftmost tangent at the deque top
+		while (isLeft(D[top - 1], D[top], P[i], u, v) <= 0)
+			--top;                 // pop top of deque
+		D[++top] = P[i];           // push P[i] onto top of deque
+	}
+
+	// transcribe deque D[] to the output hull array H[]
+	int h;        // hull vertex counter
+	for (h = 0; h <= (top - bot); h++)
+		H.push_back(D[bot + h]);
+
+	return h - 1;
+}
+
+
 template <typename PointT>
 bool pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(
 	const Eigen::Vector3f &plane_n, const Eigen::Vector3f &plane_p,
@@ -205,9 +298,11 @@ bool pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(
 	Vector3f search_p_3d;
 	assert(planeRayInteraction(plane_n, plane_p, on_lower_plane, dir, search_p_3d));
 
+#if 0
 	float intersect_height = search_p_3d[height_axis] - leaf_bmin[height_axis];
 	if (intersect_height < 0 || intersect_height > (leaf_bmax[height_axis] - leaf_bmin[height_axis]))
 		return false;
+#endif
 
 	//test_sample_points_2.push_back(search_p_3d);
 

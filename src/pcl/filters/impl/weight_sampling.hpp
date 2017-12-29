@@ -42,6 +42,7 @@
 #include <pcl/filters/weight_sampling.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <cstdlib>
+#include <random>
 
 template <typename T> std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
 {
@@ -61,7 +62,6 @@ int computeWeights(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, int num_pts, flo
 
 	float feature_length = 6;
 	float normalization_sum = 0.0;
-	float sum_p;
 
 	for (int i = 0; i < num_pts; i++) {
 
@@ -145,6 +145,43 @@ std::vector<int> weightedRandomSample(std::vector<float> weights, int num_pts, i
 	return(samples);
 }
 
+std::vector<int> weightedNormalSample(std::vector<float> weights, int num_pts, int total_samples) {
+
+	srand(static_cast <unsigned> (time(0)));
+	std::vector<int> samples(num_pts, 0);
+	std::vector<float> imp_wt_rs(num_pts, 0.0);
+
+	std::random_device rd;  //Will be used to obtain a seed for the random number engine
+	std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+	std::uniform_real_distribution<> dis(0.0, 1.0);
+
+	std::sort(weights.begin(), weights.end());
+
+	// calculate rolling sum of weights:
+	for (int i = 1; i < num_pts; i++) {
+		imp_wt_rs[i] = imp_wt_rs[i - 1] + weights[i - 1];
+	}
+
+	for (int i = 0; i < total_samples; i++) {
+		//float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		float r = dis(gen);
+		// find bin:
+		for (int j = 0; j < num_pts - 1; j++) {
+			if (r <= imp_wt_rs[j + 1] && r >= imp_wt_rs[j]) {
+				samples[i] = j;
+				//printf("r: %f, low: %f, high: %f \n",r,imp_wt_rs[j],imp_wt_rs[j+1]);
+				//printf("sampleidx: %d, imp_wt: %0.9f \n ", j, imp_wt[j]);
+				break;
+			}
+		}
+		if (r > imp_wt_rs[num_pts - 1]) {
+			samples[i] = num_pts - 1;
+		}
+	}
+	return(samples);
+}
+
+
 void resamplePC(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, pcl::PointCloud<pcl::PointXYZ>::Ptr pc_rs, std::vector<int> samples, int total_samples) {
 	pc_rs->width = total_samples;
 	pc_rs->height = 1;
@@ -173,7 +210,7 @@ pcl::WeightSampling<PointT>::applyFilter(PointCloud &output)
 	}
 
 	//float sigma_sq = 0.00005;
-	float sigma_sq = 0.000005;
+	float sigma_sq = 0.000000005;
 	//  int numNbrs = 50;
 	int numNbrs = 50;
 	int num_pts = input_->size();

@@ -217,9 +217,9 @@ vtkSmartPointer<vtkActor> pcl_build_point_cloud_actor(PointCloud<PointXYZ>::Ptr 
 vtkRenderer *g_ren1 = nullptr;
 void test_octree_resampling()
 {
-	string filename = "Armadillo.obj";
+	//string filename = "Armadillo.obj";
 	//string filename = "normal_oh_none_repaired.obj";
-	//string filename = "lucy_none-Slice-54_center_vn.obj";
+	string filename = "lucy_none-Slice-54_center_vn.obj";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
 	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
@@ -227,8 +227,8 @@ void test_octree_resampling()
 
 	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	UniformOctreeSampling<PointXYZ> sampler;
-	sampler.setSamplingResolution(1);
-	sampler.setSampleRadiusSearch(1);
+	sampler.setSamplingResolution(3);
+	sampler.setSampleRadiusSearch(3);
 	sampler.setOctreeResolution(0.005);
 	sampler.setInputCloud(cloud);
 	sampler.setInputNormalCloud(normal);
@@ -312,7 +312,8 @@ int main()
 	g_ren1->SetBackground(0.4, 0.4, 0.4);
 
 	//test_weight_sampling();
-	test_uniform_sampling();
+	//test_uniform_sampling();
+	test_octree_resampling();
 
 	vtkRenderWindow *renWin = vtkRenderWindow::New();
 	renWin->AddRenderer(g_ren1);
