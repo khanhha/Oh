@@ -88,6 +88,16 @@ void write_obj_points(std::string filename, const std::vector<Vector3f> &points)
 	of.close();
 }
 
+void write_obj_points(std::string filename, const PointCloud<PointXYZ> &cloud)
+{
+	std::ofstream of(filename);
+	for (auto &p : cloud.points)
+	{
+		of << "v " << p.x << " " << p.y << " " << p.x << std::endl;
+	}
+	of.close();
+}
+
 void test_uniform_octree_sample()
 {
 	string filename = "normal_lucy_none-Slice-54_center_vn.obj";
@@ -242,8 +252,8 @@ vtkRenderer *g_ren1 = nullptr;
 void test_octree_resampling()
 {
 	//string filename = "ellipse_204";
-	string filename = "Armadillo"; //1 resolution
-	//string filename = "normal_oh_none_repaired_points"; //4 resolution
+	//string filename = "Armadillo"; //1 resolution
+	string filename = "normal_oh_none_repaired_points"; //4 resolution
 	//string filename = "lucy_none-Slice-54_center_vn";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
 	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
@@ -279,17 +289,19 @@ void test_octree_resampling()
 
 	UniformOctreeSampling<PointXYZ> sampler;
 	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-	sampler.setResampleMethod(UniformOctreeSampling<PointXYZ>::ResampleMethod::NONUNIFORM_MAX_POINTS_PER_LEAF);
-	sampler.setInterpolationMethod(UniformOctreeSampling<PointXYZ>::InterpolationMethod::AVERAGE);
+	sampler.setResampleMethod(UniformOctreeSampling<PointXYZ>::ResampleMethod::UNIFORM);
+	sampler.setInterpolationMethod(UniformOctreeSampling<PointXYZ>::InterpolationMethod::CLOSEST_TO_CENTER);
 	sampler.setMaxPointsPerLeaf(6);
-	sampler.setSamplingResolution(1);
-	sampler.setSampleRadiusSearch(1);
+	sampler.setSamplingResolution(7);
+	sampler.setSampleRadiusSearch(5);
 	sampler.setOctreeResolution(0.005);
 	sampler.setOctreeNormalThreshold(0.9);
 
 	sampler.setInputCloud(cloud);
 	sampler.setInputNormalCloud(normal);
 	sampler.filter(*out_cloud);
+
+	write_obj_points("G:\\Projects\\Oh\\data\\" + filename + "_uniform.obj", *out_cloud);
 
 	auto sample_actor = vtk_build_points_actor(out_cloud->points, Vector3f(1.0f, 0.0f, 0.0f), 6.0f);
 	auto sample_1_actor = vtk_build_points_actor(sampler.test_sample_points_1, Vector3f(0.0f, 1.0f, 1.0f), 6.0f);
