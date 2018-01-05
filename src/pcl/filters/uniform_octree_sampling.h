@@ -74,6 +74,8 @@ namespace pcl
 		typedef typename OctreeNormal::Ptr OctreeNormalPtr;
 		typedef typename OctreeNormal::LeafNode LeafNode;
 	public:
+		enum class ResampleMethod { UNIFORM, NONUNIFORM_MAX_POINTS_PER_LEAF, NONUNIFORM_NORMAL_THRESHOLD};
+		enum class InterpolationMethod {CLOSEST_TO_CENTER, AVERAGE};
 		typedef std::shared_ptr<UniformOctreeSampling<PointT> > Ptr;
 		typedef std::shared_ptr<const UniformOctreeSampling<PointT> > ConstPtr;
 
@@ -90,7 +92,10 @@ namespace pcl
 			min_b_(Eigen::Vector3f::Zero()),
 			max_b_(Eigen::Vector3f::Zero()),
 			min_bi_(Eigen::Vector3i::Zero()),
-			max_bi_(Eigen::Vector3i::Zero())
+			max_bi_(Eigen::Vector3i::Zero()),
+			method_(ResampleMethod::UNIFORM),
+			interpolation_(InterpolationMethod::CLOSEST_TO_CENTER),
+			max_points_per_octree_leaf_(6)
 		{
 			filter_name_ = "UniformOctreeSampling";
 		}
@@ -109,13 +114,15 @@ namespace pcl
 			sampling_size_[0] = sampling_size_[1] = sampling_size_[2] = static_cast<float> (sampling_resolution_);
 			inverse_sampling_size_ = Eigen::Array3f::Ones() / sampling_size_.array();
 		}
-
+		inline void setMaxPointsPerLeaf(size_t n) { assert(n >= 6);  max_points_per_octree_leaf_ = n; max_points_per_octree_leaf_ = std::max<size_t>(6, max_points_per_octree_leaf_); }
 		inline void setSampleRadiusSearch(double radius) { sample_radius_search = radius; };
-
+		inline void setResampleMethod(ResampleMethod method) { method_ = method; };
+		inline void setInterpolationMethod(InterpolationMethod inter) { interpolation_ = inter; };
 	public:
 		std::vector<Eigen::Vector3f> test_sample_points;
 		std::vector<Eigen::Vector3f> test_sample_points_1;
 		std::vector<Eigen::Vector3f> test_sample_points_2;
+		std::vector<Eigen::Vector3f> test_sample_points_3;
 		std::vector<Eigen::Vector3f> test_node_points;
 		std::vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> test_node_bounds;
 		std::vector<std::pair<Eigen::Vector3f, int>>			 test_node_ids;
@@ -126,7 +133,10 @@ namespace pcl
 		double octree_resolution_;
 		double sampling_resolution_;
 		double sample_radius_search;
-		
+		size_t max_points_per_octree_leaf_;
+		ResampleMethod method_;
+		InterpolationMethod interpolation_;
+
 		Eigen::Vector3f  sampling_size_;
 		Eigen::Vector3f  inverse_sampling_size_;
 		
@@ -139,6 +149,13 @@ namespace pcl
 		*/
 		void
 			applyFilter(PointCloud &output);
+		void 
+			filterUniform(PointCloud &output);
+		void 
+			filterNonuniformMaxPointsPerLeaf(PointCloud &output);
+		void 
+			filterNonuniformNormalThreshold(PointCloud &output);
+
 		void
 			averagePlane(const LeafNode *node, Eigen::Vector3f &p, Eigen::Vector3f &n) const;
 		size_t 
@@ -149,32 +166,14 @@ namespace pcl
 				const Eigen::Vector3f &leaf_bmin, const Eigen::Vector3f &leaf_bmax,
 				std::vector<float> &ret_heights, std::vector<float> &ret_sqrt_dst);
 
-		inline float
-			heightBasePlane(const size_t &idx, const size_t &axis, const Eigen::Vector3f &bmin)
-		{
-			if (axis == 0)
-				return input_->points[idx].x - bmin.x();
-			else if (axis == 1)
-				return input_->points[idx].y - bmin.y();
-			else
-				return input_->points[idx].z - bmin.z();
-		}
-
-		size_t searchPointsRadius(const Eigen::Vector3f &center, float radius, std::vector<Eigen::Vector3f> *points, std::vector<float> *dsts);
-
-		inline float interpolationWeight(const size_t &idx, const Eigen::Vector3f &p, const size_t &u, const size_t &v)
-		{
-			const Eigen::Vector3f &other_p = input_->points[idx].getVector3fMap();
-			const float du = (other_p[u] - p[u]);
-			const float dv = (other_p[v] - p[v]);
-			const float sqr_dst = du * du + dv*dv;
-			if (sqr_dst > 0)
-				return 1.0f / sqrt(sqr_dst);
-			else
-				return 1.0f;
-		}
-
-		void calcBounds(const std::vector<int> &indices, Eigen::Vector3f &bmin, Eigen::Vector3f &bmax);
+		size_t 
+			searchPointsRadius(const Eigen::Vector3f &center, float radius, std::vector<Eigen::Vector3f> *points, std::vector<float> *dsts);
+		void  
+			averagePoint(const std::vector<int> &indices, PointT &avg);
+		float 
+			closestPoint(const std::vector<int> &indices, Eigen::Vector3f &center, PointT &closest);
+		void 
+			calcBounds(const std::vector<int> &indices, Eigen::Vector3f &bmin, Eigen::Vector3f &bmax);
 
 		inline void
 			initSamplingBounds(const Eigen::Vector3f &min_p, const Eigen::Vector3f &max_p)
@@ -186,16 +185,6 @@ namespace pcl
 				min_b_[i] = static_cast<int> (round(min_p[i] * inverse_sampling_size_[i]));
 				max_b_[i] = static_cast<int> (round(max_p[i] * inverse_sampling_size_[i]));
 			}
-		};
-
-		inline Eigen::Vector3i
-			mapSamplingCoord(const Eigen::Vector3f &in) const
-		{
-			Eigen::Vector3i ijk = Eigen::Vector3i::Zero();
-			ijk[0] = static_cast<int> (round(in[0] * inverse_sampling_size_[0]));
-			ijk[1] = static_cast<int> (round(in[1] * inverse_sampling_size_[1]));
-			ijk[2] = static_cast<int> (round(in[2] * inverse_sampling_size_[2]));
-			return ijk;
 		};
 	};
 

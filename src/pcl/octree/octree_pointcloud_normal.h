@@ -103,7 +103,7 @@ namespace pcl
 
 			void addPointsFromInputCloud();
 
-		protected:
+		public:
 			float  leafSize(OctreeContainerPointIndices *container);
 			float  normalThreshold(OctreeContainerPointIndices *container);
 

@@ -78,6 +78,16 @@ void test_uniform_sample()
 	sampler.filter(*out_cloud);
 }
 
+void write_obj_points(std::string filename, const std::vector<Vector3f> &points)
+{
+	std::ofstream of(filename);
+	for (auto &p : points)
+	{
+		of << "v " << p[0] << " " << p[1] << " " << p[2] << std::endl;
+	}
+	of.close();
+}
+
 void test_uniform_octree_sample()
 {
 	string filename = "normal_lucy_none-Slice-54_center_vn.obj";
@@ -154,6 +164,7 @@ vtkSmartPointer<vtkActor> vtk_build_box_actor(std::vector<std::pair<Vector3f, Ve
 	return actor;
 }
 
+
 vtkSmartPointer<vtkActor> vtk_build_points_actor(std::vector<Vector3f> &points, Vector3f color = Vector3f(1.0f, 0.0f, 0.0f), float size = 1.0f)
 {
 	vtkSmartPointer<vtkPoints> point_arr = vtkSmartPointer<vtkPoints>::New();
@@ -185,7 +196,20 @@ vtkSmartPointer<vtkActor> vtk_build_points_actor(std::vector<Vector3f> &points, 
 	return actor;
 }
 
-std::vector<Actor3DPtr> vtk_build_number_text(std::vector<std::pair<Eigen::Vector3f, int>> ids)
+
+vtkSmartPointer<vtkActor> vtk_build_points_actor(const std::vector<PointXYZ, Eigen::aligned_allocator<PointXYZ> > &points, Vector3f color = Vector3f(1.0f, 0.0f, 0.0f), float size = 1.0f)
+{
+	std::vector<Vector3f> e_points;
+	for (const auto &p : points)
+	{
+		Vector3f tmp(p.x, p.y, p.z);
+		e_points.push_back(tmp);
+	}
+
+	return vtk_build_points_actor(e_points, color, size);
+}
+
+std::vector<Actor3DPtr> vtk_build_number_text(std::vector<std::pair<Eigen::Vector3f, int>> ids, float scale = 0.01)
 {
 	std::vector<Actor3DPtr> texts;
 	for (int i = 0; i < ids.size(); ++i)
@@ -196,7 +220,7 @@ std::vector<Actor3DPtr> vtk_build_number_text(std::vector<std::pair<Eigen::Vecto
 		actor->SetInput(str.c_str());
 		Eigen::Vector3d p = ids[i].first.cast<double>();
 		actor->SetPosition(p.data());
-		actor->SetScale(0.07);
+		actor->SetScale(scale);
 		
 		texts.push_back(actor);
 	}
@@ -217,35 +241,63 @@ vtkSmartPointer<vtkActor> pcl_build_point_cloud_actor(PointCloud<PointXYZ>::Ptr 
 vtkRenderer *g_ren1 = nullptr;
 void test_octree_resampling()
 {
-	string filename = "Armadillo.obj";
-	//string filename = "normal_oh_none_repaired.obj";
-	//string filename = "lucy_none-Slice-54_center_vn.obj";
+	//string filename = "ellipse_204";
+	string filename = "Armadillo"; //1 resolution
+	//string filename = "normal_oh_none_repaired_points"; //4 resolution
+	//string filename = "lucy_none-Slice-54_center_vn";
 	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
 	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
-	io::cloud_load_point_cloud(basepath + filename, basepath, cloud, normal);
+	io::cloud_load_point_cloud(basepath + filename + ".obj", basepath, cloud, normal);
 
-	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+
+	//{
+	//	UniformOctreeSampling<PointXYZ> sampler;
+	//	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	//	sampler.setResampleMethod(UniformOctreeSampling<PointXYZ>::ResampleMethod::HEIGHT_INTERPOLATION);
+	//	sampler.setSamplingResolution(1);
+	//	sampler.setSampleRadiusSearch(1);
+	//	sampler.setOctreeResolution(0.005);
+	//	sampler.setOctreeNormalThreshold(0.9);
+
+	//	sampler.setInputCloud(cloud);
+	//	sampler.setInputNormalCloud(normal);
+	//	sampler.filter(*out_cloud);
+
+	//	//write_obj_points("G:\\Projects\\Oh\\data\\" + filename + "_resampled_height_interpolation.obj", sampler.test_sample_points);
+	//}
+
+	//{
+	//	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	//	UniformOctreeSampling<PointXYZ> sampler;
+	//	sampler.setResampleMethod(UniformOctreeSampling<PointXYZ>::ResampleMethod::CLOSEST_POINT);
+	//	sampler.setSamplingResolution(1);
+	//	sampler.setInputCloud(cloud);
+	//	sampler.filter(*out_cloud);
+	//	//write_obj_points("G:\\Projects\\Oh\\data\\" + filename + "_resampled_closest.obj", sampler.test_sample_points);
+	//}
+
 	UniformOctreeSampling<PointXYZ> sampler;
-	//sampler.setSamplingResolution(3);
-	//sampler.setSampleRadiusSearch(3);
-	//sampler.setOctreeResolution(0.005);
-	//sampler.setOctreeNormalThreshold(0.8);
+	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	sampler.setResampleMethod(UniformOctreeSampling<PointXYZ>::ResampleMethod::NONUNIFORM_MAX_POINTS_PER_LEAF);
+	sampler.setInterpolationMethod(UniformOctreeSampling<PointXYZ>::InterpolationMethod::AVERAGE);
+	sampler.setMaxPointsPerLeaf(6);
 	sampler.setSamplingResolution(1);
 	sampler.setSampleRadiusSearch(1);
-	sampler.setOctreeResolution(0.0005);
-	sampler.setOctreeNormalThreshold(0.8);
+	sampler.setOctreeResolution(0.005);
+	sampler.setOctreeNormalThreshold(0.9);
+
 	sampler.setInputCloud(cloud);
 	sampler.setInputNormalCloud(normal);
 	sampler.filter(*out_cloud);
 
-	auto sample_actor = vtk_build_points_actor(sampler.test_sample_points, Vector3f(1.0f, 0.0f, 0.0f), 3.0f);
-	auto sample_1_actor = vtk_build_points_actor(sampler.test_sample_points_1, Vector3f(0.0f, 1.0f, 1.0f), 3.0f);
-	auto sample_2_actor = vtk_build_points_actor(sampler.test_sample_points_2, Vector3f(0.0f, 0.0f, 1.0f), 8.0f);
+	auto sample_actor = vtk_build_points_actor(out_cloud->points, Vector3f(1.0f, 0.0f, 0.0f), 6.0f);
+	auto sample_1_actor = vtk_build_points_actor(sampler.test_sample_points_1, Vector3f(0.0f, 1.0f, 1.0f), 6.0f);
+	auto sample_2_actor = vtk_build_points_actor(sampler.test_sample_points_2, Vector3f(0.0f, 0.0f, 1.0f), 6.0f);
 	auto node_point_actor = vtk_build_points_actor(sampler.test_node_points, Vector3f(1.0f, 1.0f, 0.0f), 3.0f);
 	auto node_bb_actor = vtk_build_box_actor(sampler.test_node_bounds, Vector3f(0.3f, .6f, 0.1f));
 	auto cloud_actor = pcl_build_point_cloud_actor(cloud);
-	auto node_text_actors = vtk_build_number_text(sampler.test_node_ids);
+	auto node_text_actors = vtk_build_number_text(sampler.test_node_ids, 0.02);
 
 	g_ren1->SetBackground(0.4, 0.4, 0.4);
 

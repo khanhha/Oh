@@ -6,12 +6,99 @@ using namespace std;
 using namespace pcl;
 using namespace Eigen;
 
+
 template <typename PointT>
 void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 {
+	output.height = 1;                    // down sampling breaks the organized structure
+	output.is_dense = true;                 // we filter out invalid points
+
+	if (method_ == ResampleMethod::UNIFORM)
+		filterUniform(output);
+	else if (method_ == ResampleMethod::NONUNIFORM_MAX_POINTS_PER_LEAF)
+		filterNonuniformMaxPointsPerLeaf(output);
+	else if (method_ == ResampleMethod::NONUNIFORM_NORMAL_THRESHOLD)
+		filterNonuniformNormalThreshold(output);
+}
+
+template <typename PointT>
+void pcl::UniformOctreeSampling<PointT>::filterUniform(PointCloud &output)
+{
+	typedef octree::OctreePointCloud<PointT> MyOctree;
+	MyOctree octree(sampling_resolution_);
+	octree.setInputCloud(input_);
+	octree.addPointsFromInputCloud();
+
+	MyOctree::LeafNodeIterator leafIter, leafEnd = octree.leaf_end();
+	for (leafIter = octree.leaf_begin(); leafIter != leafEnd; ++leafIter)
+	{
+		MyOctree::LeafNode *leaf = static_cast<MyOctree::LeafNode*>(*leafIter);
+		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
+		const std::vector<int> &indices = container->getPointIndicesVector();
+
+		PointT final_point;
+		if (interpolation_ == InterpolationMethod::CLOSEST_TO_CENTER)
+		{
+			PointT p;
+			octree.genLeafNodeCenterFromOctreeKey(leafIter.getCurrentOctreeKey(), p);
+			Vector3f leaf_center(p.x, p.y, p.z);
+			closestPoint(indices, leaf_center, final_point);
+		}
+		else if (interpolation_ == InterpolationMethod::AVERAGE)
+		{
+			averagePoint(indices, final_point);
+		}
+		else
+		{
+			final_point.x = final_point.y = final_point.z = 0;
+		}
+
+		output.points.push_back(final_point);
+	}
+}
+
+template <typename PointT>
+void pcl::UniformOctreeSampling<PointT>::filterNonuniformMaxPointsPerLeaf(PointCloud &output)
+{
+	typedef octree::OctreePointCloud<PointT> MyOctree;
+	MyOctree octree(sampling_resolution_);
+	octree.setInputCloud(input_);
+	octree.enableDynamicDepth(max_points_per_octree_leaf_);
+	octree.addPointsFromInputCloud();
+
+	MyOctree::LeafNodeIterator leafIter, leafEnd = octree.leaf_end();
+	for (leafIter = octree.leaf_begin(); leafIter != leafEnd; ++leafIter)
+	{
+		MyOctree::LeafNode *leaf = static_cast<MyOctree::LeafNode*>(*leafIter);
+		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
+		const std::vector<int> &indices = container->getPointIndicesVector();
+
+		PointT final_point;
+		if (interpolation_ == InterpolationMethod::CLOSEST_TO_CENTER)
+		{
+			PointT p;
+			octree.genLeafNodeCenterFromOctreeKey(leafIter.getCurrentOctreeKey(), p);
+			Vector3f leaf_center(p.x, p.y, p.z);
+			closestPoint(indices, leaf_center, final_point);
+		}
+		else if (interpolation_ == InterpolationMethod::AVERAGE)
+		{
+			averagePoint(indices, final_point);
+		}
+		else 
+		{
+			final_point.x = final_point.y = final_point.z = 0;
+		}
+		output.points.push_back(final_point);
+	}
+}
+
+template <typename PointT>
+void pcl::UniformOctreeSampling<PointT>::filterNonuniformNormalThreshold(PointCloud &output)
+{
 	octree_.reset(new OctreeNormal(octree_resolution_));
 	octree_->setInputCloud(input_);
-	octree_->enableDynamicDepth(50);
+	octree_->enableDynamicDepth(64);
 	octree_->setInputNormalCloud(input_normal_cloud_);
 	octree_->setNormalThreshold(octree_normal_threshold);
 	octree_->addPointsFromInputCloud();
@@ -30,7 +117,9 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 	size_t test_cnt = 0;
 	for (leafIter = octree_->leaf_begin(); leafIter != leafEnd; ++leafIter, test_cnt++)
 	{
-		//if(test_cnt != 182)
+		//if (test_cnt > 7200 || test_cnt < 7180)
+		//	continue;
+		//if (test_cnt != 7196)
 		//	continue;
 
 		OctreeNormal::LeafNode *leaf = static_cast<OctreeNormal::LeafNode*>(*leafIter);
@@ -42,50 +131,41 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 		Vector3f node_bmin, node_bmax;
 		calcBounds(indices, node_bmin, node_bmax);
 
-//#define	TEST_VOXEL_BOUNDS
-#ifdef TEST_VOXEL_BOUNDS
-		Vector3f voxel_min, voxel_max;
-		octree_->getVoxelBounds(leafIter, voxel_min, voxel_max);
-		test_node_bounds.push_back(std::make_pair(voxel_min, voxel_max));
-#endif
-
-		test_node_bounds.push_back(std::make_pair(voxel_bmin, voxel_bmax));
+		//test_node_bounds.push_back(std::make_pair(voxel_bmin, voxel_bmax));
 		//test_node_ids.push_back(std::make_pair(0.5f*(voxel_bmin + voxel_bmax), test_cnt));
-
 		//for (size_t i = 0; i < indices.size(); ++i)
 		//	test_node_points.push_back(input_->points[indices[i]].getVector3fMap());
 
 		Vector3f snode_bmin = inverse_sampling_size_.array()*voxel_bmin.array();
 		Vector3f snode_bmax = inverse_sampling_size_.array()*voxel_bmax.array();
-		Vector3f node_bmin_i(ceil(snode_bmin[0]),  ceil(snode_bmin[1]), ceil(snode_bmin[2]));
+		Vector3f node_bmin_i(ceil(snode_bmin[0]), ceil(snode_bmin[1]), ceil(snode_bmin[2]));
 		Vector3f node_bmax_i(floor(snode_bmax[0]), floor(snode_bmax[1]), floor(snode_bmax[2]));
-		
+
 		Vector3f node_avg_norm, node_avg_center;
 		averagePlane(leaf, node_avg_center, node_avg_norm);
 		const int base_plane_norm_axis = findBasePlane(node_avg_norm);
 		const int u_axis = (base_plane_norm_axis + 1) % 3;
 		const int v_axis = (base_plane_norm_axis + 2) % 3;
-		const int width =  node_bmax_i[u_axis] - node_bmin_i[u_axis];
+		const int width = node_bmax_i[u_axis] - node_bmin_i[u_axis];
 		const int height = node_bmax_i[v_axis] - node_bmin_i[v_axis];
 		node_bmin_i *= sampling_resolution_;
 		node_bmax_i *= sampling_resolution_;
+		float voxel_height = voxel_bmax[base_plane_norm_axis] - voxel_bmin[base_plane_norm_axis];
 
 		Vector3f test_size = node_bmax_i - node_bmin_i;
 		if (test_size[u_axis] < 0.0f && test_size[v_axis] < 0.0f)
 			continue;
 
-		if(indices.size() < 3)
+		if (indices.size() < 3)
 			continue;
 
 		std::vector<Vector3f> extend_leaf_points;
 		Vector3f leaf_center = 0.5f*(node_bmin + node_bmax);
 		float radius_search = 0.5*(node_bmax - node_bmin).norm();
-		radius_search = radius_search + 1.5 * sampling_resolution_;
+		radius_search = radius_search + 1.1* sampling_resolution_;
 		searchPointsRadius(leaf_center, radius_search, &extend_leaf_points, nullptr);
 
 		std::vector<Vector3f> convex_hull;
-		//int hull_size = SimpleHull2D(extend_leaf_points, convex_hull, u_axis, v_axis);
-		//chainHull_2D(extend_leaf_points, convex_hull, u_axis, v_axis);
 		int hull_size = buildConvexHull(extend_leaf_points, convex_hull, u_axis, v_axis);
 		convex_hull.push_back(convex_hull[0]); //v[n] = v[0]. close the convex hull
 
@@ -96,14 +176,13 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 		//for (auto &p : test_sample_points_2)
 		//	p[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis];
 
-		size_t inside_bounds_cnt = 0;
 		for (int i = 0; i <= width; ++i) {
 			for (int j = 0; j <= height; ++j) {
 				Vector3f sampled_co;
 				sampled_co[u_axis] = node_bmin_i[u_axis] + i * sampling_resolution_;
 				sampled_co[v_axis] = node_bmin_i[v_axis] + j * sampling_resolution_;
 				sampled_co[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis];
-				
+
 				//test_sample_points_1.push_back(sampled_co);
 
 				if (!IsPointInsidePoly(sampled_co, convex_hull, convex_hull.size() - 1, u_axis, v_axis))
@@ -113,21 +192,19 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 				}
 
 				radius_heights.clear(); radius_sqr_dsts.clear();
-				bool inside_bounds = searchRadiusOnPlane(node_avg_norm, node_avg_center, 
+				bool inside_bounds = searchRadiusOnPlane(node_avg_norm, node_avg_center,
 					sampled_co, sample_radius_search, u_axis, v_axis, base_plane_norm_axis,
 					voxel_bmin, voxel_bmax, radius_heights, radius_sqr_dsts);
-				
-				if(!inside_bounds)
-					continue;
 
-				inside_bounds_cnt++;
+				if (!inside_bounds)
+					continue;
 
 				//interpolate
 				float total_weight = 0.0f;
 				float h = 0.0f;
 				for (size_t k = 0; k < radius_heights.size(); ++k)
 				{
-					const float w = (radius_sqr_dsts[k] != 0.0f) ? (1.0f / sqrt(radius_sqr_dsts[k])): 1.0f;
+					const float w = (radius_sqr_dsts[k] != 0.0f) ? (1.0f / sqrt(radius_sqr_dsts[k])) : 1.0f;
 					const float h_tmp = radius_heights[k];
 					//assert(h_tmp >= 0.0f);
 					total_weight += w;
@@ -135,68 +212,17 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 				}
 
 				h = h / total_weight;
+				if(h < 0.0f || h > voxel_height)
+					continue;
 
 				sampled_co[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis] + h;
 
 				test_sample_points.push_back(sampled_co);
 			}
 		}
-
-		float percent = static_cast<float>(inside_bounds_cnt) / static_cast<float>((width+1)*(height+1));
-		if (percent < 0.9)
-		{
-			//test_node_bounds.push_back(std::make_pair(voxel_bmin, voxel_bmax));
-		}
 	}
 }
 
-inline bool nearBoundary(const size_t &u, const size_t &v, const Vector3f &min_corner, const Vector3f &max_corner, const float &radius, const Vector3f &p)
-{
-	if ((p[u] - min_corner[u] >= 0.0f && p[u] - min_corner[u] < radius) ||
-		(p[v] - min_corner[v] >= 0.0f && p[v] - min_corner[v] < radius) ||
-		(max_corner[u] - p[u] >= 0.0f && max_corner[u] - p[u] < radius) ||
-		(max_corner[v] - p[v] >= 0.0f && max_corner[v] - p[v] < radius))
-	{
-		return true;
-	}
-	return false;
-}
-
-inline Vector3f extendBoundary(const size_t &u, const size_t &v, const Vector3f &min_corner, const Vector3f &max_corner, const float &radius, const Vector3f &p)
-{
-	Vector3f size = max_corner - min_corner;
-	Vector3f pr = p - min_corner;
-	const float dia_ratio = size[v] / size[u];
-	const float ratio = pr[v] / pr[u];
-	if (ratio > dia_ratio)
-	{
-		if (pr[u] < radius)
-		{
-			pr[u] = -pr[u];
-		}
-		else if (size[v] - pr[v] < radius)
-		{
-			pr[v] += 2 * (size[v] - pr[v]);
-		}
-	}
-	else if (ratio < dia_ratio)
-	{
-		if (pr[v] < radius)
-		{
-			pr[v] = -pr[v];
-		}
-		else if (size[u] - pr[u] < radius)
-		{
-			pr[u] += 2 * (size[u] - pr[u]);
-		}
-	}
-	else 
-	{
-		assert(false);
-	}
-
-	return min_corner + pr;
-}
 
 inline float squareDistance(const Vector3f &p0, const Vector3f &p1, const size_t &u, const size_t &v)
 {
@@ -298,8 +324,6 @@ bool pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(
 		return false;
 #endif
 
-	//test_sample_points_2.push_back(search_p_3d);
-
 	PointT p; p.x = search_p_3d[0]; p.y = search_p_3d[1]; p.z = search_p_3d[2];
 	
 	std::vector<int> indices_3d;
@@ -307,12 +331,18 @@ bool pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(
 	int npoints = octree_->radiusSearch(p, radius, indices_3d, dst_3d);
 	ret_heights.resize(npoints);
 	ret_sqrt_dst.resize(npoints);
+
+	Vector3f avg = Vector3f::Zero();
 	for (int i = 0; i < npoints ; ++i)
 	{
 		const Vector3f tmp = input_->points[indices_3d[i]].getVector3fMap();
 		ret_heights[i]  = tmp[height_axis] - leaf_bmin[height_axis];
 		ret_sqrt_dst[i] = squareDistance(search_p_3d, tmp, u, v);
+
+		avg += tmp;
 	}
+
+	test_sample_points_1.push_back(avg/npoints);
 
 	return true;
 }
@@ -388,5 +418,40 @@ void pcl::UniformOctreeSampling<PointT>::calcBounds(const std::vector<int> &indi
 	}
 }
 
+template <typename PointT>
+void pcl::UniformOctreeSampling<PointT>::averagePoint(const std::vector<int> &indices, PointT &r_avg)
+{
+	typename std::vector<int>::const_iterator it;
+	typename std::vector<int>::const_iterator it_end = indices.cend();
+	Eigen::Vector3f avg = Vector3f::Zero();
+	for (it = indices.cbegin(); it != it_end; ++it)
+	{
+		const Eigen::Vector3f& p = input_->at(*it).getVector3fMap();
+		avg += p;
+	}
+	avg /= indices.size();
 
+	r_avg.x = avg[0];
+	r_avg.y = avg[1];
+	r_avg.z = avg[2];
+}
+
+template <typename PointT>
+float pcl::UniformOctreeSampling<PointT>::closestPoint(const std::vector<int> &indices, Eigen::Vector3f &center, PointT &closest)
+{
+	typename std::vector<int>::const_iterator it;
+	typename std::vector<int>::const_iterator it_end = indices.cend();
+	float min_sqr_dst = std::numeric_limits<float>::max();
+	for (it = indices.cbegin(); it != it_end; ++it)
+	{
+		const Eigen::Vector3f& p = input_->at(*it).getVector3fMap();
+		float sqr_dst = (p - center).squaredNorm();
+		if (sqr_dst < min_sqr_dst)
+		{
+			min_sqr_dst = sqr_dst;
+			closest = input_->at(*it);
+		}
+	}
+	return  sqrt(min_sqr_dst);
+}
 #endif
