@@ -75,7 +75,7 @@ namespace pcl
 		typedef typename OctreeNormal::LeafNode LeafNode;
 	public:
 		enum class ResampleMethod { UNIFORM, NONUNIFORM_MAX_POINTS_PER_LEAF, NONUNIFORM_NORMAL_THRESHOLD};
-		enum class InterpolationMethod {CLOSEST_TO_CENTER, AVERAGE};
+		enum class InterpolationMethod {CLOSEST_TO_CENTER, AVERAGE, HEIGHT_INTERPOLATION};
 		typedef std::shared_ptr<UniformOctreeSampling<PointT> > Ptr;
 		typedef std::shared_ptr<const UniformOctreeSampling<PointT> > ConstPtr;
 
@@ -158,6 +158,9 @@ namespace pcl
 
 		void
 			averagePlane(const LeafNode *node, Eigen::Vector3f &p, Eigen::Vector3f &n) const;
+		void
+			averagePlane(const std::vector<int> &indices, Eigen::Vector3f &p, Eigen::Vector3f &n) const;
+
 		size_t 
 			findBasePlane(const Eigen::Vector3f &avg_normal) const;
 		bool
@@ -174,6 +177,8 @@ namespace pcl
 			closestPoint(const std::vector<int> &indices, Eigen::Vector3f &center, PointT &closest);
 		void 
 			calcBounds(const std::vector<int> &indices, Eigen::Vector3f &bmin, Eigen::Vector3f &bmax);
+		void 
+			heightApproximate(const std::vector<int> &indices, PointT &sample_p);
 
 		inline void
 			initSamplingBounds(const Eigen::Vector3f &min_p, const Eigen::Vector3f &max_p)

@@ -36,24 +36,24 @@ void pcl::UniformOctreeSampling<PointT>::filterUniform(PointCloud &output)
 		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 		const std::vector<int> &indices = container->getPointIndicesVector();
 
-		PointT final_point;
+		PointT sample_point;
 		if (interpolation_ == InterpolationMethod::CLOSEST_TO_CENTER)
 		{
 			PointT p;
 			octree.genLeafNodeCenterFromOctreeKey(leafIter.getCurrentOctreeKey(), p);
 			Vector3f leaf_center(p.x, p.y, p.z);
-			closestPoint(indices, leaf_center, final_point);
+			closestPoint(indices, leaf_center, sample_point);
 		}
 		else if (interpolation_ == InterpolationMethod::AVERAGE)
 		{
-			averagePoint(indices, final_point);
+			averagePoint(indices, sample_point);
 		}
 		else
 		{
-			final_point.x = final_point.y = final_point.z = 0;
+			heightApproximate(indices, sample_point);
 		}
 
-		output.points.push_back(final_point);
+		output.points.push_back(sample_point);
 	}
 }
 
@@ -73,23 +73,24 @@ void pcl::UniformOctreeSampling<PointT>::filterNonuniformMaxPointsPerLeaf(PointC
 		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 		const std::vector<int> &indices = container->getPointIndicesVector();
 
-		PointT final_point;
+		PointT sample_point;
 		if (interpolation_ == InterpolationMethod::CLOSEST_TO_CENTER)
 		{
 			PointT p;
 			octree.genLeafNodeCenterFromOctreeKey(leafIter.getCurrentOctreeKey(), p);
 			Vector3f leaf_center(p.x, p.y, p.z);
-			closestPoint(indices, leaf_center, final_point);
+			closestPoint(indices, leaf_center, sample_point);
 		}
 		else if (interpolation_ == InterpolationMethod::AVERAGE)
 		{
-			averagePoint(indices, final_point);
+			averagePoint(indices, sample_point);
 		}
 		else 
 		{
-			final_point.x = final_point.y = final_point.z = 0;
+			heightApproximate(indices, sample_point);
 		}
-		output.points.push_back(final_point);
+
+		output.points.push_back(sample_point);
 	}
 }
 
@@ -386,6 +387,14 @@ void pcl::UniformOctreeSampling<PointT>::averagePlane(const LeafNode *leaf, Eige
 {
 	const octree::OctreeContainerPointIndices *container = static_cast<const octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 	const std::vector<int>& indices = container->getPointIndicesVector();
+	averagePlane(indices, p, n);
+}
+
+template <typename PointT>
+void pcl::UniformOctreeSampling<PointT>::averagePlane(const std::vector<int> &indices, Eigen::Vector3f &p, Eigen::Vector3f &n) const
+{
+	assert(input_normal_cloud_);
+
 	Eigen::Vector3f avg_norm = Vector3f::Zero();
 	Eigen::Vector3f avg = Vector3f::Zero();
 	for (auto it = indices.cbegin(); it != indices.cend(); ++it)
@@ -397,7 +406,7 @@ void pcl::UniformOctreeSampling<PointT>::averagePlane(const LeafNode *leaf, Eige
 	avg_norm /= indices.size();
 	avg_norm.normalize();
 
-	p = avg /indices.size();
+	p = avg / indices.size();
 	n = avg_norm;
 }
 
@@ -434,6 +443,35 @@ void pcl::UniformOctreeSampling<PointT>::averagePoint(const std::vector<int> &in
 	r_avg.x = avg[0];
 	r_avg.y = avg[1];
 	r_avg.z = avg[2];
+}
+
+template <typename PointT>
+void pcl::UniformOctreeSampling<PointT>::heightApproximate(const std::vector<int> &indices, PointT &sample_p)
+{
+	Vector3f avg_p, avg_n, bmin, bmax;
+	averagePlane(indices, avg_p, avg_n);
+	calcBounds(indices, bmin, bmax);
+	size_t base_plane_axis = findBasePlane(avg_n);
+	size_t u_axis = (base_plane_axis + 1) % 3;
+	size_t v_axis = (base_plane_axis + 2) % 3;
+
+	float h = 0.0f;
+	float total_weight = 0.0f;
+	for (size_t k = 0; k < indices.size(); ++k)
+	{
+		const Vector3f &p = input_->points[indices[k]].getVector3fMap();
+		const float dst = squareDistance(avg_p, p, u_axis, v_axis);
+		const float w = (dst != 0.0f) ? (1.0f / dst) : 1.0f;
+		const float h_p = p[base_plane_axis] - bmin[base_plane_axis];
+		total_weight += w;
+		h += h_p * w;
+	}
+	h = h / total_weight;
+	
+	avg_p[base_plane_axis] = h + bmin[base_plane_axis];
+	sample_p.x = avg_p.x();
+	sample_p.y = avg_p.y();
+	sample_p.z = avg_p.z();
 }
 
 template <typename PointT>

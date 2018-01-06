@@ -88,12 +88,12 @@ void write_obj_points(std::string filename, const std::vector<Vector3f> &points)
 	of.close();
 }
 
-void write_obj_points(std::string filename, const PointCloud<PointXYZ> &cloud)
+void write_obj_points(std::string filename, const PointCloud<PointXYZ> &cloud, Vector3f color = Vector3f(1.0f, 0.0f, 0.0f))
 {
 	std::ofstream of(filename);
 	for (auto &p : cloud.points)
 	{
-		of << "v " << p.x << " " << p.y << " " << p.x << std::endl;
+		of << "v " << p.x << " " << p.y << " " << p.z << " " <<color[0] <<" " << color[1] <<" " << color[2] <<std::endl;
 	}
 	of.close();
 }
@@ -247,62 +247,93 @@ vtkSmartPointer<vtkActor> pcl_build_point_cloud_actor(PointCloud<PointXYZ>::Ptr 
 
 	return vtk_build_points_actor(points, Vector3f(1.0f, 1.0f, 1.0f), 2.0f);
 }
+string enumToString(UniformOctreeSampling<PointXYZ>::ResampleMethod method)
+{
+	switch (method)
+	{
+	case pcl::UniformOctreeSampling<pcl::PointXYZ>::ResampleMethod::UNIFORM:
+		return "uniform";
+		break;
+	case pcl::UniformOctreeSampling<pcl::PointXYZ>::ResampleMethod::NONUNIFORM_MAX_POINTS_PER_LEAF:
+		return "nonuniform_max_point_per_leaf";
+		break;
+	case pcl::UniformOctreeSampling<pcl::PointXYZ>::ResampleMethod::NONUNIFORM_NORMAL_THRESHOLD:
+		return "nonuniform_normal_threshodl";
+		break;
+	default:
+		return "";
+		break;
+	}
+}
+string enumToString(UniformOctreeSampling<PointXYZ>::InterpolationMethod method)
+{
+	switch (method)
+	{
+	case pcl::UniformOctreeSampling<pcl::PointXYZ>::InterpolationMethod::CLOSEST_TO_CENTER:
+		return "closest_to_center";
+		break;
+	case pcl::UniformOctreeSampling<pcl::PointXYZ>::InterpolationMethod::AVERAGE:
+		return "average";
+		break;
+	case pcl::UniformOctreeSampling<pcl::PointXYZ>::InterpolationMethod::HEIGHT_INTERPOLATION:
+		return "height_interpolation";
+		break;
+	default:
+		return "";
+		break;
+	}
+}
 
 vtkRenderer *g_ren1 = nullptr;
 void test_octree_resampling()
 {
-	//string filename = "ellipse_204";
+	string filenames[] = {
+		"normal_lucy_none-Slice-54_center_vn",
+		"normal_lucy_none-Slice-55_center_vn",
+		"normal_lucy_none-Slice-56_center_vn",
+		"normal_lucy_none-Slice-57_center_vn",
+		"normal_lucy_tshirt-Slice-54_center_vn",
+		"normal_lucy_tshirt-Slice-55_center_vn",
+		"normal_lucy_tshirt-Slice-56_center_vn",
+		"normal_lucy_tshirt-Slice-57_center_vn",
+		"normal_lucy_none_repaired",
+		"normal_lucy_standard_tee_repaired"
+	};
+
+	size_t nfiles = sizeof(filenames)/sizeof(string);
+	for (size_t i = 0; i < nfiles; ++i)
+	{
+		string filename = filenames[i];
+		string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
+		PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+		PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
+		io::cloud_load_point_cloud(basepath + filename + ".obj", basepath, cloud, normal);
+
+		UniformOctreeSampling<PointXYZ>::ResampleMethod resample_med = UniformOctreeSampling<PointXYZ>::ResampleMethod::NONUNIFORM_MAX_POINTS_PER_LEAF;
+		UniformOctreeSampling<PointXYZ>::InterpolationMethod inter_med = UniformOctreeSampling<PointXYZ>::InterpolationMethod::CLOSEST_TO_CENTER;
+
+		UniformOctreeSampling<PointXYZ> sampler;
+		PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+		sampler.setResampleMethod(resample_med);
+		sampler.setInterpolationMethod(inter_med);
+		sampler.setMaxPointsPerLeaf(6);
+		sampler.setSamplingResolution(5);
+		sampler.setSampleRadiusSearch(5);
+		sampler.setOctreeResolution(0.005);
+		sampler.setOctreeNormalThreshold(0.9);
+
+		sampler.setInputCloud(cloud);
+		sampler.setInputNormalCloud(normal);
+		sampler.filter(*out_cloud);
+
+		write_obj_points("G:\\Projects\\Oh\\data\\resample_result\\" + filename + "_" + enumToString(resample_med) + "_"+ enumToString(inter_med) + ".obj", *out_cloud);
+	}
+
 	//string filename = "Armadillo"; //1 resolution
-	string filename = "normal_oh_none_repaired_points"; //4 resolution
+	//string filename = "normal_oh_none_repaired_points"; //4 resolution
 	//string filename = "lucy_none-Slice-54_center_vn";
-	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
-	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-	PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
-	io::cloud_load_point_cloud(basepath + filename + ".obj", basepath, cloud, normal);
 
-
-	//{
-	//	UniformOctreeSampling<PointXYZ> sampler;
-	//	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-	//	sampler.setResampleMethod(UniformOctreeSampling<PointXYZ>::ResampleMethod::HEIGHT_INTERPOLATION);
-	//	sampler.setSamplingResolution(1);
-	//	sampler.setSampleRadiusSearch(1);
-	//	sampler.setOctreeResolution(0.005);
-	//	sampler.setOctreeNormalThreshold(0.9);
-
-	//	sampler.setInputCloud(cloud);
-	//	sampler.setInputNormalCloud(normal);
-	//	sampler.filter(*out_cloud);
-
-	//	//write_obj_points("G:\\Projects\\Oh\\data\\" + filename + "_resampled_height_interpolation.obj", sampler.test_sample_points);
-	//}
-
-	//{
-	//	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-	//	UniformOctreeSampling<PointXYZ> sampler;
-	//	sampler.setResampleMethod(UniformOctreeSampling<PointXYZ>::ResampleMethod::CLOSEST_POINT);
-	//	sampler.setSamplingResolution(1);
-	//	sampler.setInputCloud(cloud);
-	//	sampler.filter(*out_cloud);
-	//	//write_obj_points("G:\\Projects\\Oh\\data\\" + filename + "_resampled_closest.obj", sampler.test_sample_points);
-	//}
-
-	UniformOctreeSampling<PointXYZ> sampler;
-	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-	sampler.setResampleMethod(UniformOctreeSampling<PointXYZ>::ResampleMethod::UNIFORM);
-	sampler.setInterpolationMethod(UniformOctreeSampling<PointXYZ>::InterpolationMethod::CLOSEST_TO_CENTER);
-	sampler.setMaxPointsPerLeaf(6);
-	sampler.setSamplingResolution(7);
-	sampler.setSampleRadiusSearch(5);
-	sampler.setOctreeResolution(0.005);
-	sampler.setOctreeNormalThreshold(0.9);
-
-	sampler.setInputCloud(cloud);
-	sampler.setInputNormalCloud(normal);
-	sampler.filter(*out_cloud);
-
-	write_obj_points("G:\\Projects\\Oh\\data\\" + filename + "_uniform.obj", *out_cloud);
-
+#if 0
 	auto sample_actor = vtk_build_points_actor(out_cloud->points, Vector3f(1.0f, 0.0f, 0.0f), 6.0f);
 	auto sample_1_actor = vtk_build_points_actor(sampler.test_sample_points_1, Vector3f(0.0f, 1.0f, 1.0f), 6.0f);
 	auto sample_2_actor = vtk_build_points_actor(sampler.test_sample_points_2, Vector3f(0.0f, 0.0f, 1.0f), 6.0f);
@@ -321,6 +352,8 @@ void test_octree_resampling()
 	g_ren1->AddActor(node_bb_actor);
 	for (auto ac : node_text_actors)
 		g_ren1->AddViewProp(ac);
+#endif
+
 }
 
 void test_weight_sampling()
