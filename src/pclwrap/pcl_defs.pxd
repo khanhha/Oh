@@ -481,34 +481,34 @@ ctypedef shared_ptr[vector[int]] IndicesPtr_t;
 # template <typename PointT>
 # class PCLBase
 
-# cdef extern from "pcl/pcl_base.h" namespace "pcl":
-#     cdef cppclass PCLBase[PointT]:
-#         PCLBase ()
-#         # PCLBase (const PCLBase& base)
-#         # virtual void setInputCloud (PointCloudPtr_t cloud)
-#         # void setInputCloud (PointCloudPtr_t cloud)
-#         void setInputCloud (shared_ptr[PointCloud[PointT]] cloud)
-#
-#         # PointCloudPtr_t getInputCloud ()
-#         shared_ptr[PointCloud[PointT]] getInputCloud ()
-#
-#         void setIndices (IndicesPtr_t &indices)
-#         # void setIndices (IndicesConstPtr_t &indices)
-#         # void setIndices (const PointIndicesPtr_t &indices)
-#         # void setIndices (size_t row_start, size_t col_start, size_t nb_rows, size_t nb_cols)
-#
-#         # IndicesConstPtr_t getIndices ()
-#         # # const PointT& operator[] (size_t pos)
-#
-#
-# ctypedef PCLBase[PointXYZ] PCLBase_t
-# ctypedef PCLBase[PointXYZI] PCLBase_PointXYZI_t
-# ctypedef PCLBase[PointXYZRGB] PCLBase_PointXYZRGB_t
-# ctypedef PCLBase[PointXYZRGBA] PCLBase_PointXYZRGBA_t
-# ctypedef shared_ptr[PCLBase[PointXYZ]] PCLBasePtr_t
-# ctypedef shared_ptr[PCLBase[PointXYZI]] PCLBase_PointXYZI_Ptr_t
-# ctypedef shared_ptr[PCLBase[PointXYZRGB]] PCLBase_PointXYZRGB_Ptr_t
-# ctypedef shared_ptr[PCLBase[PointXYZRGBA]] PCLBase_PointXYZRGBA_Ptr_t
+cdef extern from "pcl/pcl_base.h" namespace "pcl":
+    cdef cppclass PCLBase[PointT]:
+        PCLBase ()
+        # PCLBase (const PCLBase& base)
+        # virtual void setInputCloud (PointCloudPtr_t cloud)
+        # void setInputCloud (PointCloudPtr_t cloud)
+        void setInputCloud (shared_ptr[PointCloud[PointT]] cloud)
+
+        # PointCloudPtr_t getInputCloud ()
+        shared_ptr[PointCloud[PointT]] getInputCloud ()
+
+        void setIndices (IndicesPtr_t &indices)
+        # void setIndices (IndicesConstPtr_t &indices)
+        # void setIndices (const PointIndicesPtr_t &indices)
+        # void setIndices (size_t row_start, size_t col_start, size_t nb_rows, size_t nb_cols)
+
+        # IndicesConstPtr_t getIndices ()
+        # # const PointT& operator[] (size_t pos)
+
+
+ctypedef PCLBase[PointXYZ] PCLBase_t
+ctypedef PCLBase[PointXYZI] PCLBase_PointXYZI_t
+ctypedef PCLBase[PointXYZRGB] PCLBase_PointXYZRGB_t
+ctypedef PCLBase[PointXYZRGBA] PCLBase_PointXYZRGBA_t
+ctypedef shared_ptr[PCLBase[PointXYZ]] PCLBasePtr_t
+ctypedef shared_ptr[PCLBase[PointXYZI]] PCLBase_PointXYZI_Ptr_t
+ctypedef shared_ptr[PCLBase[PointXYZRGB]] PCLBase_PointXYZRGB_Ptr_t
+ctypedef shared_ptr[PCLBase[PointXYZRGBA]] PCLBase_PointXYZRGBA_Ptr_t
 
 ###
 

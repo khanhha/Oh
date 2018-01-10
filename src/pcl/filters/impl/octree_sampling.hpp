@@ -8,7 +8,7 @@ using namespace Eigen;
 
 
 template <typename PointT>
-void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
+void pcl::OctreeSampling<PointT>::applyFilter(PointCloud &output)
 {
 	output.height = 1;                    // down sampling breaks the organized structure
 	output.is_dense = true;                 // we filter out invalid points
@@ -22,7 +22,7 @@ void pcl::UniformOctreeSampling<PointT>::applyFilter(PointCloud &output)
 }
 
 template <typename PointT>
-void pcl::UniformOctreeSampling<PointT>::filterUniform(PointCloud &output)
+void pcl::OctreeSampling<PointT>::filterUniform(PointCloud &output)
 {
 	typedef octree::OctreePointCloud<PointT> MyOctree;
 	MyOctree octree(sampling_resolution_);
@@ -58,7 +58,7 @@ void pcl::UniformOctreeSampling<PointT>::filterUniform(PointCloud &output)
 }
 
 template <typename PointT>
-void pcl::UniformOctreeSampling<PointT>::filterNonuniformMaxPointsPerLeaf(PointCloud &output)
+void pcl::OctreeSampling<PointT>::filterNonuniformMaxPointsPerLeaf(PointCloud &output)
 {
 	typedef octree::OctreePointCloud<PointT> MyOctree;
 	MyOctree octree(sampling_resolution_);
@@ -95,7 +95,7 @@ void pcl::UniformOctreeSampling<PointT>::filterNonuniformMaxPointsPerLeaf(PointC
 }
 
 template <typename PointT>
-void pcl::UniformOctreeSampling<PointT>::filterNonuniformNormalThreshold(PointCloud &output)
+void pcl::OctreeSampling<PointT>::filterNonuniformNormalThreshold(PointCloud &output)
 {
 	octree_.reset(new OctreeNormal(octree_resolution_));
 	octree_->setInputCloud(input_);
@@ -305,7 +305,7 @@ size_t buildConvexHull(vector<Vector3f> &P, std::vector<Vector3f> &H, size_t u, 
 }
 
 template <typename PointT>
-bool pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(
+bool pcl::OctreeSampling<PointT>::searchRadiusOnPlane(
 	const Eigen::Vector3f &plane_n, const Eigen::Vector3f &plane_p,
 	const Vector3f &search_p, float radius, size_t u, size_t v, size_t height_axis,
 	const Vector3f &leaf_bmin, const Vector3f &leaf_bmax,
@@ -349,7 +349,7 @@ bool pcl::UniformOctreeSampling<PointT>::searchRadiusOnPlane(
 }
 
 template <typename PointT>
-size_t pcl::UniformOctreeSampling<PointT>::searchPointsRadius(const Eigen::Vector3f &center, float radius, std::vector<Eigen::Vector3f> *points, std::vector<float> *dsts)
+size_t pcl::OctreeSampling<PointT>::searchPointsRadius(const Eigen::Vector3f &center, float radius, std::vector<Eigen::Vector3f> *points, std::vector<float> *dsts)
 {
 	std::vector<int> indices_3d;
 	std::vector<float> dst_3d;
@@ -365,7 +365,7 @@ size_t pcl::UniformOctreeSampling<PointT>::searchPointsRadius(const Eigen::Vecto
 }
 
 template <typename PointT>
-size_t pcl::UniformOctreeSampling<PointT>::findBasePlane(const Eigen::Vector3f &avg_norm) const
+size_t pcl::OctreeSampling<PointT>::findBasePlane(const Eigen::Vector3f &avg_norm) const
 {
 	size_t max_axis = 0;
 	float  max_dot = -10.0f;
@@ -383,7 +383,7 @@ size_t pcl::UniformOctreeSampling<PointT>::findBasePlane(const Eigen::Vector3f &
 }
 
 template <typename PointT>
-void pcl::UniformOctreeSampling<PointT>::averagePlane(const LeafNode *leaf, Eigen::Vector3f &p, Eigen::Vector3f &n) const
+void pcl::OctreeSampling<PointT>::averagePlane(const LeafNode *leaf, Eigen::Vector3f &p, Eigen::Vector3f &n) const
 {
 	const octree::OctreeContainerPointIndices *container = static_cast<const octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 	const std::vector<int>& indices = container->getPointIndicesVector();
@@ -391,7 +391,7 @@ void pcl::UniformOctreeSampling<PointT>::averagePlane(const LeafNode *leaf, Eige
 }
 
 template <typename PointT>
-void pcl::UniformOctreeSampling<PointT>::averagePlane(const std::vector<int> &indices, Eigen::Vector3f &p, Eigen::Vector3f &n) const
+void pcl::OctreeSampling<PointT>::averagePlane(const std::vector<int> &indices, Eigen::Vector3f &p, Eigen::Vector3f &n) const
 {
 	assert(input_normal_cloud_);
 
@@ -411,7 +411,7 @@ void pcl::UniformOctreeSampling<PointT>::averagePlane(const std::vector<int> &in
 }
 
 template <typename PointT>
-void pcl::UniformOctreeSampling<PointT>::calcBounds(const std::vector<int> &indices, Eigen::Vector3f &bmin, Eigen::Vector3f &bmax)
+void pcl::OctreeSampling<PointT>::calcBounds(const std::vector<int> &indices, Eigen::Vector3f &bmin, Eigen::Vector3f &bmax)
 {
 	typename std::vector<int>::const_iterator it;
 	typename std::vector<int>::const_iterator it_end = indices.cend();
@@ -428,7 +428,7 @@ void pcl::UniformOctreeSampling<PointT>::calcBounds(const std::vector<int> &indi
 }
 
 template <typename PointT>
-void pcl::UniformOctreeSampling<PointT>::averagePoint(const std::vector<int> &indices, PointT &r_avg)
+void pcl::OctreeSampling<PointT>::averagePoint(const std::vector<int> &indices, PointT &r_avg)
 {
 	typename std::vector<int>::const_iterator it;
 	typename std::vector<int>::const_iterator it_end = indices.cend();
@@ -446,9 +446,19 @@ void pcl::UniformOctreeSampling<PointT>::averagePoint(const std::vector<int> &in
 }
 
 template <typename PointT>
-void pcl::UniformOctreeSampling<PointT>::heightApproximate(const std::vector<int> &indices, PointT &sample_p)
+void pcl::OctreeSampling<PointT>::heightApproximate(const std::vector<int> &indices, PointT &sample_p)
 {
 	Vector3f avg_p, avg_n, bmin, bmax;
+
+	if (indices.size() == 0) {
+		return;
+	}else if (indices.size() == 1){
+		const Vector3f &p = input_->points[indices[0]].getVector3fMap();
+		sample_p.x = p.x();
+		sample_p.y = p.y();
+		sample_p.z = p.z();
+	}
+
 	averagePlane(indices, avg_p, avg_n);
 	calcBounds(indices, bmin, bmax);
 	size_t base_plane_axis = findBasePlane(avg_n);
@@ -475,7 +485,7 @@ void pcl::UniformOctreeSampling<PointT>::heightApproximate(const std::vector<int
 }
 
 template <typename PointT>
-float pcl::UniformOctreeSampling<PointT>::closestPoint(const std::vector<int> &indices, Eigen::Vector3f &center, PointT &closest)
+float pcl::OctreeSampling<PointT>::closestPoint(const std::vector<int> &indices, Eigen::Vector3f &center, PointT &closest)
 {
 	typename std::vector<int>::const_iterator it;
 	typename std::vector<int>::const_iterator it_end = indices.cend();

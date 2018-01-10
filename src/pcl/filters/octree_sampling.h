@@ -63,7 +63,7 @@ namespace pcl
 	* \ingroup keypoints
 	*/
 	template <typename PointT>
-	class UniformOctreeSampling : public Filter<PointT>
+	class OctreeSampling : public Filter<PointT>
 	{
 		using Filter<PointT>::filter_name_;
 		using Filter<PointT>::input_;
@@ -74,10 +74,10 @@ namespace pcl
 		typedef typename OctreeNormal::Ptr OctreeNormalPtr;
 		typedef typename OctreeNormal::LeafNode LeafNode;
 	public:
-		enum class ResampleMethod { UNIFORM, NONUNIFORM_MAX_POINTS_PER_LEAF, NONUNIFORM_NORMAL_THRESHOLD};
-		enum class InterpolationMethod {CLOSEST_TO_CENTER, AVERAGE, HEIGHT_INTERPOLATION};
-		typedef std::shared_ptr<UniformOctreeSampling<PointT> > Ptr;
-		typedef std::shared_ptr<const UniformOctreeSampling<PointT> > ConstPtr;
+		enum ResampleMethod { UNIFORM = 0, NONUNIFORM_MAX_POINTS_PER_LEAF, NONUNIFORM_NORMAL_THRESHOLD};
+		enum InterpolationMethod {CLOSEST_TO_CENTER = 0, AVERAGE, HEIGHT_INTERPOLATION};
+		typedef std::shared_ptr<OctreeSampling<PointT> > Ptr;
+		typedef std::shared_ptr<const OctreeSampling<PointT> > ConstPtr;
 
 		typedef pcl::PointCloud<Normal>			NormalCloud;
 		typedef typename NormalCloud::Ptr		NormalCloudPtr;
@@ -86,7 +86,7 @@ namespace pcl
 
 
 		/** \brief Empty constructor. */
-		UniformOctreeSampling() :
+		OctreeSampling() :
 			sampling_size_(Eigen::Vector3f::Zero()),
 			inverse_sampling_size_(Eigen::Vector3f::Zero()),
 			min_b_(Eigen::Vector3f::Zero()),
@@ -94,14 +94,14 @@ namespace pcl
 			min_bi_(Eigen::Vector3i::Zero()),
 			max_bi_(Eigen::Vector3i::Zero()),
 			method_(ResampleMethod::UNIFORM),
-			interpolation_(InterpolationMethod::CLOSEST_TO_CENTER),
+			interpolation_(InterpolationMethod::HEIGHT_INTERPOLATION),
 			max_points_per_octree_leaf_(6)
 		{
-			filter_name_ = "UniformOctreeSampling";
+			filter_name_ = "OctreeSampling";
 		}
 
 		/** \brief Destructor. */
-		virtual ~UniformOctreeSampling()
+		virtual ~OctreeSampling()
 		{
 		}
 
@@ -144,9 +144,7 @@ namespace pcl
 		Eigen::Vector3f min_b_, max_b_;
 		Eigen::Vector3i min_bi_, max_bi_;
 		OctreeNormalPtr octree_;
-		/** \brief Downsample a Point Cloud using a voxelized grid approach
-		* \param[out] output the resultant point cloud message
-		*/
+
 		void
 			applyFilter(PointCloud &output);
 		void 
@@ -196,9 +194,9 @@ namespace pcl
 
 }
 
-#ifdef PCL_NO_PRECOMPILE
-#include <pcl/filters/impl/uniform_octree_sampling.hpp>
-#endif
+//#ifdef PCL_NO_PRECOMPILE
+#include <pcl/filters/impl/octree_sampling.hpp>
+//#endif
 
 #endif  //#ifndef PCL_FILTERS_UNIFORM_SAMPLING_H_
 
