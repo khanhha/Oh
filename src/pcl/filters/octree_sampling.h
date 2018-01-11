@@ -98,6 +98,9 @@ namespace pcl
 			max_points_per_octree_leaf_(6)
 		{
 			filter_name_ = "OctreeSampling";
+			setSamplingResolution(1);
+			setOctreeResolution(0.01);
+			setOctreeNormalThreshold(0.8);
 		}
 
 		/** \brief Destructor. */

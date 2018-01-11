@@ -1598,6 +1598,7 @@ cdef extern from "pcl/filters/octree_sampling.h" namespace "pcl":
         ctypedef enum InterpolationMethod:
             CLOSEST_TO_CENTER, AVERAGE, HEIGHT_INTERPOLATION
         OctreeSampling()
+        void setInputNormalCloud (cpp.PointCloud_Normal_Ptr_t)
         void setOctreeResolution(double rel);
         void setOctreeNormalThreshold(double thres);
         void setSamplingResolution(double rel);

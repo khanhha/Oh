@@ -90,11 +90,48 @@ octreeNormal.set_leaf_normal_threshold(0.8)
 octreeNormal.add_points_from_input_cloud()
 
 sampler = pcl.OctreeSampling()
+
+# UNIFORM and  HEIGHT_INTERPOLATION
 sampler.set_input_cloud(cloudpoint)
+sampler.set_input_normal_cloud(cloudnormal)
 sampler.set_sampling_resolution(5)
 sampler.set_resample_method(pcl.ResampleMethod.UNIFORM)
 sampler.set_interpolation_method(pcl.InterpolationMethod.HEIGHT_INTERPOLATION)
 result = sampler.filter()
+
+# UNIFORM and [AVERAGE OR CLOSEST_TO_CENTER]
+# sampler.set_input_cloud(cloudpoint)
+# sampler.set_sampling_resolution(5)
+# sampler.set_resample_method(pcl.ResampleMethod.UNIFORM)
+# sampler.set_interpolation_method(pcl.InterpolationMethod.CLOSEST_TO_CENTER)
+# result = sampler.filter()
+
+# NONUNIFORM_MAX_POINTS_PER_LEAF and [AVERAGE or CLOSEST_TO_CENTER]
+# sampler.set_input_cloud(cloudpoint)
+# sampler.set_max_points_per_leaf(6)
+# sampler.set_octree_resolution(0.01) # should be small enough to contain at least 6 points per leaf
+# sampler.set_resample_method(pcl.ResampleMethod.NONUNIFORM_MAX_POINTS_PER_LEAF)
+# sampler.set_interpolation_method(pcl.InterpolationMethod.AVERAGE)
+# result = sampler.filter()
+
+# NONUNIFORM_MAX_POINTS_PER_LEAF and HEIGHT_INTERPOLATION
+# sampler.set_input_cloud(cloudpoint)
+# sampler.set_input_normal_cloud(cloudnormal)
+# sampler.set_max_points_per_leaf(6)
+# sampler.set_octree_resolution(0.01) # should be small enough to contain at least 6 points per leaf
+# sampler.set_resample_method(pcl.ResampleMethod.NONUNIFORM_MAX_POINTS_PER_LEAF)
+# sampler.set_interpolation_method(pcl.InterpolationMethod.HEIGHT_INTERPOLATION)
+# result = sampler.filter()
+
+# NONUNIFORM_NORMAL_THRESHOLD
+# sampler.set_input_cloud(cloudpoint)
+# sampler.set_input_normal_cloud(cloudnormal)
+# sampler.set_octree_normal_threshold(0.8)
+# sampler.set_octree_resolution(0.01) # should be small enough to contain at least 6 points per leaf
+# sampler.set_sampling_resolution(5)
+# sampler.set_resample_method(pcl.ResampleMethod.NONUNIFORM_NORMAL_THRESHOLD)
+# result = sampler.filter()
+
 camera = vtk.vtkCamera()
 camera.SetPosition(1, 1, 1)
 camera.SetFocalPoint(0, 0, 0)

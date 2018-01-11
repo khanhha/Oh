@@ -25,6 +25,9 @@ cdef class OctreeSampling:
     def set_input_cloud(self, PointCloud pc not None):
         (<cpp.PCLBase_t*>self.me).setInputCloud(pc.thisptr_shared)
 
+    def set_input_normal_cloud(self, PointCloud_Normal pc not None):
+        self.me.setInputNormalCloud(pc.thisptr_shared)
+
     def filter(self):
         """
         Apply the filter according to the previously set parameters and return

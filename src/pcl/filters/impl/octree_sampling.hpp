@@ -61,7 +61,7 @@ template <typename PointT>
 void pcl::OctreeSampling<PointT>::filterNonuniformMaxPointsPerLeaf(PointCloud &output)
 {
 	typedef octree::OctreePointCloud<PointT> MyOctree;
-	MyOctree octree(sampling_resolution_);
+	MyOctree octree(octree_resolution_);
 	octree.setInputCloud(input_);
 	octree.enableDynamicDepth(max_points_per_octree_leaf_);
 	octree.addPointsFromInputCloud();
@@ -118,11 +118,6 @@ void pcl::OctreeSampling<PointT>::filterNonuniformNormalThreshold(PointCloud &ou
 	size_t test_cnt = 0;
 	for (leafIter = octree_->leaf_begin(); leafIter != leafEnd; ++leafIter, test_cnt++)
 	{
-		//if (test_cnt > 7200 || test_cnt < 7180)
-		//	continue;
-		//if (test_cnt != 7196)
-		//	continue;
-
 		OctreeNormal::LeafNode *leaf = static_cast<OctreeNormal::LeafNode*>(*leafIter);
 		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 		const std::vector<int> &indices = container->getPointIndicesVector();
@@ -184,8 +179,6 @@ void pcl::OctreeSampling<PointT>::filterNonuniformNormalThreshold(PointCloud &ou
 				sampled_co[v_axis] = node_bmin_i[v_axis] + j * sampling_resolution_;
 				sampled_co[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis];
 
-				//test_sample_points_1.push_back(sampled_co);
-
 				if (!IsPointInsidePoly(sampled_co, convex_hull, convex_hull.size() - 1, u_axis, v_axis))
 				{
 					sampled_co[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis];
@@ -217,8 +210,10 @@ void pcl::OctreeSampling<PointT>::filterNonuniformNormalThreshold(PointCloud &ou
 					continue;
 
 				sampled_co[base_plane_norm_axis] = voxel_bmin[base_plane_norm_axis] + h;
+				PointT sampled_p;
+				sampled_p.x = sampled_co.x(); sampled_p.y = sampled_co.y(); sampled_p.z = sampled_co.z();
 
-				test_sample_points.push_back(sampled_co);
+				output.points.push_back(sampled_p);
 			}
 		}
 	}
