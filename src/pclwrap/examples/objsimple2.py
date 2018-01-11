@@ -225,8 +225,27 @@ class objwriter():
             pass
         finally:
             f.close()
-    
-    
+
+    @classmethod
+    def writeVerts(cls, fname, verts):
+        f = open(fname, 'wb')
+        try:
+            writer = objwriter(f)
+            writer.writeVerts_(verts)
+        except EOFError:
+            pass
+        finally:
+            f.close()
+
+    def writeVerts_(self, verts):
+        N = len(verts)
+        self.writeLine('# Wavefront OBJ file')
+        self.writeLine('# Created by Khanh (a Python visualization toolkit).')
+        self.writeLine('#')
+        self.writeLine('')
+        for i in range(N):
+            self.writeTuple(verts[i], 'v')
+
     def writeLine(self, text):
         """ Simple writeLine function to write a line of code to the file.
         The encoding is done here, and a newline character is added.
@@ -246,7 +265,8 @@ class objwriter():
         # Write line
         self.writeLine('%s %s' % (what, val))
 
-    
+
+
     def writeMesh(self, mesh):
         """ Write the given mesh instance.
         """

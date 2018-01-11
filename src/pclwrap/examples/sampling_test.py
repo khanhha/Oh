@@ -2,7 +2,8 @@ import os.path
 import numpy as np
 import pcl
 import vtk
-from objsimple2 import objreader
+from objsimple2 import objreader, objwriter
+
 
 def vtk_build_point_actor(points):
     npoints = len(points)
@@ -98,6 +99,9 @@ sampler.set_sampling_resolution(5)
 sampler.set_resample_method(pcl.ResampleMethod.UNIFORM)
 sampler.set_interpolation_method(pcl.InterpolationMethod.HEIGHT_INTERPOLATION)
 result = sampler.filter()
+
+out_name = basepath + "resample_"+name
+objwriter.writeVerts(out_name, result.to_array())
 
 # UNIFORM and [AVERAGE OR CLOSEST_TO_CENTER]
 # sampler.set_input_cloud(cloudpoint)
