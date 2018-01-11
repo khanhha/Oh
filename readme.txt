@@ -1,5 +1,5 @@
 Install steps
-1. Install Python 3.5
+1. Install Python 3.5. X64 version. Note, the code currently does not support Python 32 bit
 2. Install latest cython version
 3. Install numpy
 4. start the command line window.
