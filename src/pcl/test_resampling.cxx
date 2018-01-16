@@ -47,6 +47,7 @@ VTK_MODULE_INIT(vtkInteractionStyle);
 #endif
 
 #include <string>
+#include <algorithm>
 #include <pcl/point_cloud.h>
 #include <pcl/io/obj_loader.h>
 #include <pcl/filters/uniform_sampling.h>
@@ -175,7 +176,7 @@ vtkSmartPointer<vtkActor> vtk_build_box_actor(std::vector<std::pair<Vector3f, Ve
 }
 
 
-vtkSmartPointer<vtkActor> vtk_build_points_actor(std::vector<Vector3f> &points, Vector3f color = Vector3f(1.0f, 0.0f, 0.0f), float size = 1.0f)
+vtkSmartPointer<vtkActor> vtk_build_points_actor(std::vector<Vector3f> &points, Vector3f color = Vector3f(1.0f, 0.0f, 0.0f), float size = 1.0f, const std::vector<Vector3i> &vert_colors = std::vector<Vector3i>())
 {
 	vtkSmartPointer<vtkPoints> point_arr = vtkSmartPointer<vtkPoints>::New();
 	point_arr->SetNumberOfPoints(points.size());
@@ -194,13 +195,29 @@ vtkSmartPointer<vtkActor> vtk_build_points_actor(std::vector<Vector3f> &points, 
 	vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
 	polydata->SetPoints(point_arr);
 	polydata->SetVerts(vertices);
-
-	vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+	
+	auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
 	mapper->SetInputData(polydata);
-
 	auto actor = vtkSmartPointer<vtkActor>::New();
+	
+	if (!vert_colors.empty())
+	{
+		vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New();
+		colors->SetNumberOfComponents(3);
+		colors->SetName("Colors");
+		for (size_t i = 0; i < points.size(); ++i)
+		{
+			unsigned char c[3] = { vert_colors[i][0], vert_colors[i][1], vert_colors[i][2] };
+			colors->InsertNextTupleValue(c);
+		}
+
+		polydata->GetPointData()->SetScalars(colors);
+	}
+	else {
+		actor->GetProperty()->SetColor(color(0), color(1), color(2));
+	}
+
 	actor->SetMapper(mapper);
-	actor->GetProperty()->SetColor(color(0), color(1), color(2));
 	actor->GetProperty()->SetPointSize(size);
 
 	return actor;
@@ -217,6 +234,35 @@ vtkSmartPointer<vtkActor> vtk_build_points_actor(const std::vector<PointXYZ, Eig
 	}
 
 	return vtk_build_points_actor(e_points, color, size);
+}
+
+vtkSmartPointer<vtkActor> vtk_build_points_actor(const std::vector<PointXYZ, Eigen::aligned_allocator<PointXYZ> > &points, 
+	std::vector<float> color_scalars, float size = 1.0f)
+{
+	std::vector<Vector3f> e_points;
+	std::vector<Vector3i> color_points;
+
+	Vector3f color;
+	float max_scl;
+	if(!color_scalars.empty())
+		max_scl = *(std::max_element(color_scalars.begin(), color_scalars.end()));
+	
+	for (auto i =  0; i < points.size(); ++i)
+	{
+		auto &p = points[i];
+		Vector3f tmp(p.x, p.y, p.z);
+		e_points.push_back(tmp);
+		
+		Vector3i c;
+		if (!color_scalars.empty())
+			c = Vector3i(255 * (color_scalars[i] / max_scl), 0, 0);
+		else
+			c = Vector3i(255, 0, 0);
+
+		color_points.push_back(c);
+	}
+
+	return vtk_build_points_actor(e_points, color, size, color_points);
 }
 
 std::vector<Actor3DPtr> vtk_build_number_text(std::vector<std::pair<Eigen::Vector3f, int>> ids, float scale = 0.01)
@@ -247,6 +293,8 @@ vtkSmartPointer<vtkActor> pcl_build_point_cloud_actor(PointCloud<PointXYZ>::Ptr 
 
 	return vtk_build_points_actor(points, Vector3f(1.0f, 1.0f, 1.0f), 2.0f);
 }
+
+
 string enumToString(OctreeSampling<PointXYZ>::ResampleMethod method)
 {
 	switch (method)
@@ -360,24 +408,65 @@ void test_octree_resampling()
 
 void test_weight_sampling()
 {
-	string filename = "Armadillo.obj";
-	//string filename = "normal_oh_none_repaired.obj";
-	//string filename = "lucy_none-Slice-54_center_vn.obj";
-	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
+#if 0
+	string filenames[] = {
+		"normal_lucy_none-Slice-54_center_vn",
+		"normal_lucy_none-Slice-55_center_vn",
+		"normal_lucy_none-Slice-56_center_vn",
+		"normal_lucy_none-Slice-57_center_vn",
+		"normal_lucy_tshirt-Slice-54_center_vn",
+		"normal_lucy_tshirt-Slice-55_center_vn",
+		"normal_lucy_tshirt-Slice-56_center_vn",
+		"normal_lucy_tshirt-Slice-57_center_vn",
+		"normal_lucy_none_repaired",
+		"normal_lucy_standard_tee_repaired"
+	};
+
+	size_t nfiles = sizeof(filenames) / sizeof(string);
+	for (size_t i = 0; i < nfiles; ++i)
+	{
+		string filename = filenames[i];
+		string basepath = "D:\\Projects\\Oh\\data\\test_data\\";
+		PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+		PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
+		io::cloud_load_point_cloud(basepath + filename + ".obj", basepath, cloud, normal);
+		
+		PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+		WeightSampling<PointXYZ> sampler;
+		sampler.setInputCloud(cloud);
+		sampler.setKNeighbourSearch(10);
+		sampler.setSigma(1.5);
+		sampler.setResamplePercent(0.5);
+		sampler.filter(*out_cloud);
+
+		write_obj_points("D:\\Projects\\Oh\\data\\resample_weight_result\\" + filename +  "_graph_resampled.obj", *out_cloud);
+	}
+#else
+	string filename = "normal_lucy_standard_tee_repaired";
+	//string filename = "cube";
+	//string filename = "Armadillo_points";
+	//string filename = "normal_oh_none_repaired";
+	//string filename = "lucy_none-Slice-54_center_vn";
+	string basepath = "D:\\Projects\\Oh\\data\\test_data\\";
 	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
-	io::cloud_load_point_cloud(basepath + filename, basepath, cloud, normal);
+	io::cloud_load_point_cloud(basepath + filename+".obj", basepath, cloud, normal);
 
 	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	WeightSampling<PointXYZ> sampler;
 	sampler.setInputCloud(cloud);
+	sampler.setKNeighbourSearch(10);
+	sampler.setSigma(1.5);
+	sampler.setResamplePercent(0.3);
 	sampler.filter(*out_cloud);
 
+	write_obj_points("D:\\Projects\\Oh\\data\\resample_weight_result\\" + filename + "_graph_resampled.obj", *out_cloud);
 
-	auto cloud_actor = pcl_build_point_cloud_actor(cloud);
-	auto sample_actor = vtk_build_points_actor(sampler.test_sample_points, Vector3f(1.0f, 0.0f, 0.0f), 3.0f);
+	auto cloud_actor = vtk_build_points_actor(cloud->points, Vector3f(1.0f, 0.0f, 0.0f), 1.0f);
+	auto sample_actor = vtk_build_points_actor(out_cloud->points, Vector3f(1.0f, 1.0f, 0.0f), 3.0f);
 	g_ren1->AddActor(cloud_actor);
 	g_ren1->AddActor(sample_actor);
+#endif
 }
 
 void test_uniform_sampling()
@@ -414,9 +503,9 @@ int main()
 	g_ren1 = vtkRenderer::New();
 	g_ren1->SetBackground(0.4, 0.4, 0.4);
 
-	//test_weight_sampling();
+	test_weight_sampling();
 	//test_uniform_sampling();
-	test_octree_resampling();
+	//test_octree_resampling();
 
 	vtkRenderWindow *renWin = vtkRenderWindow::New();
 	renWin->AddRenderer(g_ren1);

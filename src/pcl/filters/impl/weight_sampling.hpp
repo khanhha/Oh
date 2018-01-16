@@ -43,6 +43,9 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <cstdlib>
 #include <random>
+#include <fstream>
+#include <algorithm>
+#include <utility>
 
 template <typename T> std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
 {
@@ -60,27 +63,29 @@ int computeWeights(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, int num_pts, flo
 	kdtree.setInputCloud(pc);
 	kdtree.addPointsFromInputCloud();
 
-	float feature_length = 6;
+	float feature_length = 3;
 	float normalization_sum = 0.0;
+
+	std::vector<int> pointIdxNKNSearch(K);
+	std::vector<float> pointNKNSquaredDistance(K);
+	std::vector<float> x_j_feature(feature_length, 0.0);
+	std::vector<float> sum_nbr(feature_length, 0.0);
 
 	for (int i = 0; i < num_pts; i++) {
 
-		std::vector<int> pointIdxNKNSearch(K);
-		std::vector<float> pointNKNSquaredDistance(K);
 		pcl::PointXYZ searchPoint = pc->points[i];
 		float Aij_ew;
 		imp_wt[i] = 0.0;
-		std::vector<float> sum_nbr(feature_length, 0.0);
-
 		if (kdtree.nearestKSearch(searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0)
 		{
-			std::vector<float> x_j_feature(feature_length, 0.0);
+			std::fill(sum_nbr.begin(), sum_nbr.end(), 0.0);
+			float total_ew = 0.0;
 			for (size_t j = 1; j < pointIdxNKNSearch.size(); ++j)
 			{
 				int x_j = pointIdxNKNSearch[j];
 
 				Aij_ew = exp(-1.0*(pointNKNSquaredDistance[j] / sigma_sq));
-
+				total_ew += Aij_ew;
 				x_j_feature[0] = Aij_ew * pc->points[x_j].x;
 				x_j_feature[1] = Aij_ew * pc->points[x_j].y;
 				x_j_feature[2] = Aij_ew * pc->points[x_j].z;
@@ -88,11 +93,15 @@ int computeWeights(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, int num_pts, flo
 				//x_j_feature[4] = Aij_ew * ((float(pc->points[x_j].g)) / 255.0);
 				//x_j_feature[5] = Aij_ew * ((float(pc->points[x_j].b)) / 255.0);
 
-				sum_nbr = operator+(sum_nbr, x_j_feature);
-
+				//sum_nbr = operator+(sum_nbr, x_j_feature);
+				for (size_t k = 0; k < feature_length; ++k)
+					sum_nbr[k] += x_j_feature[k];
 			}
+				
+			//compute norm
+			for (size_t k = 0; k < feature_length; ++k)
+				sum_nbr[k] /= total_ew;
 
-			//compute norm:
 			float norm_sum = 0.0;
 			norm_sum += pow(sum_nbr[0] - searchPoint.x, 2.0);
 			norm_sum += pow(sum_nbr[1] - searchPoint.y, 2.0);
@@ -103,9 +112,9 @@ int computeWeights(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, int num_pts, flo
 			imp_wt[i] = norm_sum;
 		}
 		else {
-			printf("hello, found no neighbors\n");
 			imp_wt[i] = 0.0;
 		}
+
 		normalization_sum += imp_wt[i];
 	}
 
@@ -116,10 +125,32 @@ int computeWeights(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, int num_pts, flo
 	return(1);
 }
 
-std::vector<int> weightedRandomSample(std::vector<float> weights, int num_pts, int total_samples) {
+std::vector<int> sampleNLargest(std::vector<float> weights, int num_pts, int total_samples) 
+{
+	total_samples = std::min(total_samples, num_pts);
+
+	std::vector<std::pair<int, float>> weight_idx(weights.size());
+	for (size_t i = 0; i < weights.size(); ++i)
+		weight_idx[i] = std::make_pair(i, weights[i]);
+
+	std::sort(
+		weight_idx.begin(), weight_idx.end(),
+		[](const std::pair<int, float> &p1, const std::pair<int, float> &p2) 
+		{ 
+			return p1.second >= p2.second; 
+		});
+
+	std::vector<int> sample_idx(total_samples);
+	for (size_t i = 0; i < total_samples; ++i)
+		sample_idx[i] = weight_idx[i].first;
+	
+	return sample_idx;
+}
+
+std::vector<int> sampleRandomDistribution(std::vector<float> weights, int num_pts, int total_samples) {
 
 	srand(static_cast <unsigned> (time(0)));
-	std::vector<int> samples(num_pts, 0);
+	std::vector<int> samples(total_samples, 0);
 	std::vector<float> imp_wt_rs(num_pts, 0.0);
 
 	// calculate rolling sum of weights:
@@ -145,7 +176,7 @@ std::vector<int> weightedRandomSample(std::vector<float> weights, int num_pts, i
 	return(samples);
 }
 
-std::vector<int> weightedNormalSample(std::vector<float> weights, int num_pts, int total_samples) {
+std::vector<int> sampleNormalDistribution(std::vector<float> weights, int num_pts, int total_samples) {
 
 	srand(static_cast <unsigned> (time(0)));
 	std::vector<int> samples(num_pts, 0);
@@ -182,18 +213,18 @@ std::vector<int> weightedNormalSample(std::vector<float> weights, int num_pts, i
 }
 
 
-void resamplePC(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, pcl::PointCloud<pcl::PointXYZ>::Ptr pc_rs, std::vector<int> samples, int total_samples) {
-	pc_rs->width = total_samples;
-	pc_rs->height = 1;
-	pc_rs->points.resize(pc_rs->height * pc_rs->width);
+void resamplePC(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, pcl::PointCloud<pcl::PointXYZ>& pc_rs, std::vector<int> samples, int total_samples) {
+	pc_rs.width = total_samples;
+	pc_rs.height = 1;
+	pc_rs.points.resize(pc_rs.height * pc_rs.width);
 
 	for (int i = 0; i < total_samples; i++) {
-		pc_rs->points[i].x = pc->points[samples[i]].x;
-		pc_rs->points[i].y = pc->points[samples[i]].y;
-		pc_rs->points[i].z = pc->points[samples[i]].z;
-		//pc_rs->points[i].r = pc->points[samples[i]].r;
-		//pc_rs->points[i].g = pc->points[samples[i]].g;
-		//pc_rs->points[i].b = pc->points[samples[i]].b;
+		pc_rs.points[i].x = pc->points[samples[i]].x;
+		pc_rs.points[i].y = pc->points[samples[i]].y;
+		pc_rs.points[i].z = pc->points[samples[i]].z;
+		//pc_rs.points[i].r = pc->points[samples[i]].r;
+		//pc_rs.points[i].g = pc->points[samples[i]].g;
+		//pc_rs.points[i].b = pc->points[samples[i]].b;
 	}
 }
 
@@ -209,25 +240,18 @@ pcl::WeightSampling<PointT>::applyFilter(PointCloud &output)
 		return;
 	}
 
-	//float sigma_sq = 0.00005;
-	float sigma_sq = 0.000000005;
-	//  int numNbrs = 50;
-	int numNbrs = 50;
 	int num_pts = input_->size();
 	// compute importance weights
 	std::vector<float> imp_wt(num_pts, 0.0);
-	computeWeights(input_, num_pts, sigma_sq, numNbrs, imp_wt);
+	computeWeights(input_, num_pts,  sigma_*sigma_, k_neighbour_search_, imp_wt);
+	
+	//test_weights = imp_wt;
 
-	int total_samples = num_pts;
-	std::vector<int> sampleIdx = weightedRandomSample(imp_wt, num_pts, total_samples);
+	int total_samples = resample_percent_ * num_pts;
+	std::vector<int> sampleIdx = sampleRandomDistribution(imp_wt, num_pts, total_samples);
+	//std::vector<int> sampleIdx = sampleNLargest(imp_wt, num_pts, total_samples);
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr pc_rs(new pcl::PointCloud<pcl::PointXYZ>);
-	resamplePC(input_, pc_rs, sampleIdx, total_samples);
-
-	for (size_t i = 0; i < pc_rs->points.size(); ++i)
-	{
-		test_sample_points.push_back(pc_rs->points[i].getVector3fMap());
-	}
+	resamplePC(input_, output, sampleIdx, total_samples);
 }
 
 #define PCL_INSTANTIATE_WeightSampling(T) template class PCL_EXPORTS pcl::WeightSampling<T>;
