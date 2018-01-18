@@ -47,36 +47,40 @@
 #include <algorithm>
 #include <utility>
 
-template <typename T> std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
-{
-	assert(a.size() == b.size());
-	std::vector<T> result;
-	result.reserve(a.size());
-	std::transform(a.begin(), a.end(), b.begin(),
-		std::back_inserter(result), std::plus<T>());
-	return result;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int computeWeights(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, int num_pts, float sigma_sq, int K, std::vector<float>& imp_wt) {
+using namespace  Eigen;
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+template <typename PointT>
+int pcl::WeightSampling<PointT>::computeWeights(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, int num_pts, float sigma_sq, int K, float radius, std::vector<float>& imp_wt)
+{
 	pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
 	kdtree.setInputCloud(pc);
 	kdtree.addPointsFromInputCloud();
 
 	float feature_length = 3;
 	float normalization_sum = 0.0;
-
-	std::vector<int> pointIdxNKNSearch(K);
-	std::vector<float> pointNKNSquaredDistance(K);
+	size_t reserve_K = K > 0 ? K : 10;
+	std::vector<int> pointIdxNKNSearch(reserve_K);
+	std::vector<float> pointNKNSquaredDistance(reserve_K);
 	std::vector<float> x_j_feature(feature_length, 0.0);
 	std::vector<float> sum_nbr(feature_length, 0.0);
 
-	for (int i = 0; i < num_pts; i++) {
+#if 0
+	std::ofstream of_1;
+	of_1.open("D:\\Projects\\Oh\\log\\log_weight.txt");
+#endif
 
+	for (int i = 0; i < num_pts; i++) {
 		pcl::PointXYZ searchPoint = pc->points[i];
 		float Aij_ew;
 		imp_wt[i] = 0.0;
-		if (kdtree.nearestKSearch(searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0)
+		int nresult = 0;
+		if (K > 0)
+			nresult = kdtree.nearestKSearch(searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance);
+		else if (radius > 0.0)
+			nresult = kdtree.radiusSearch(searchPoint, radius, pointIdxNKNSearch, pointNKNSquaredDistance);
+
+		if (nresult > 1)
 		{
 			std::fill(sum_nbr.begin(), sum_nbr.end(), 0.0);
 			float total_ew = 0.0;
@@ -85,6 +89,8 @@ int computeWeights(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, int num_pts, flo
 				int x_j = pointIdxNKNSearch[j];
 
 				Aij_ew = exp(-1.0*(pointNKNSquaredDistance[j] / sigma_sq));
+				//Aij_ew = 1/ pointNKNSquaredDistance[j];
+				//Aij_ew = 1.0f;
 				total_ew += Aij_ew;
 				x_j_feature[0] = Aij_ew * pc->points[x_j].x;
 				x_j_feature[1] = Aij_ew * pc->points[x_j].y;
@@ -98,30 +104,64 @@ int computeWeights(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pc, int num_pts, flo
 					sum_nbr[k] += x_j_feature[k];
 			}
 				
+			float norm_sum = 0.0;
+			total_ew = 1.0 / total_ew;
+
 			//compute norm
 			for (size_t k = 0; k < feature_length; ++k)
-				sum_nbr[k] /= total_ew;
+				sum_nbr[k] *= total_ew;
 
-			float norm_sum = 0.0;
 			norm_sum += pow(sum_nbr[0] - searchPoint.x, 2.0);
 			norm_sum += pow(sum_nbr[1] - searchPoint.y, 2.0);
 			norm_sum += pow(sum_nbr[2] - searchPoint.z, 2.0);
 			//norm_sum += pow(sum_nbr[3] - ((float)searchPoint.r) / 255.0, 2.0);
 			//norm_sum += pow(sum_nbr[4] - ((float)searchPoint.g) / 255.0, 2.0);
 			//norm_sum += pow(sum_nbr[5] - ((float)searchPoint.b) / 255.0, 2.0);
-			imp_wt[i] = norm_sum;
-		}
-		else {
-			imp_wt[i] = 0.0;
+
+			if (!std::isnan(norm_sum))
+				imp_wt[i] = norm_sum;
+#if 0
+			if(std::isnan(norm_sum))
+				test_sample_points.push_back(Vector3f(searchPoint.x, searchPoint.y, searchPoint.z));
+
+			if (i == 17703 || i == 17705)
+			{
+				test_segments.push_back(Vector3f(searchPoint.x, searchPoint.y, searchPoint.z));
+				test_segments.push_back(Vector3f(sum_nbr[0], sum_nbr[1], sum_nbr[2]));
+			}
+
+
+			if (i == 113471 || i == 113472)
+			{
+				of_1 << i << "\t" << norm_sum << pointIdxNKNSearch.size() << std::endl;
+				of_1 << "\t\t";
+				for (auto &sqrdst : pointNKNSquaredDistance)
+					of_1 << sqrdst << " ";
+				of_1 << std::endl;
+			}
+#endif
 		}
 
 		normalization_sum += imp_wt[i];
 	}
 
+#if 0
+	of_1.close();
+
+	std::ofstream of;
+	of.open("D:\\Projects\\Oh\\log\\log.txt");
+	of << "n points: " << num_pts << std::endl;
+	of << "total weight: " << normalization_sum << std::endl;
+	std::vector<float> test_weight = imp_wt;
+	std::sort(test_weight.begin(), test_weight.end(), std::greater<float>());
+	for (auto &v : test_weight)
+		of << v << std::endl;
+	of.close();
+#endif
+
 	for (int i = 0; i < num_pts; i++) {
 		imp_wt[i] = imp_wt[i] / normalization_sum;
 	}
-
 	return(1);
 }
 
@@ -158,6 +198,15 @@ std::vector<int> sampleRandomDistribution(std::vector<float> weights, int num_pt
 		imp_wt_rs[i] = imp_wt_rs[i - 1] + weights[i - 1];
 	}
 
+	std::ofstream of0;
+	of0.open("D:\\Projects\\Oh\\log\\sample_random_CD.txt");
+	for (auto &v : imp_wt_rs)
+		of0 << v << std::endl;
+	of0.close();
+
+	std::ofstream of;
+	of.open("D:\\Projects\\Oh\\log\\sample_random.txt");
+
 	for (int i = 0; i < total_samples; i++) {
 		float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 		// find bin:
@@ -166,6 +215,7 @@ std::vector<int> sampleRandomDistribution(std::vector<float> weights, int num_pt
 				samples[i] = j;
 				//printf("r: %f, low: %f, high: %f \n",r,imp_wt_rs[j],imp_wt_rs[j+1]);
 				//printf("sampleidx: %d, imp_wt: %0.9f \n ", j, imp_wt[j]);
+				of << j << "\t" << imp_wt_rs[j] << "\t" << imp_wt_rs[j + 1] << std::endl;
 				break;
 			}
 		}
@@ -243,13 +293,13 @@ pcl::WeightSampling<PointT>::applyFilter(PointCloud &output)
 	int num_pts = input_->size();
 	// compute importance weights
 	std::vector<float> imp_wt(num_pts, 0.0);
-	computeWeights(input_, num_pts,  sigma_*sigma_, k_neighbour_search_, imp_wt);
+	computeWeights(input_, num_pts,  sigma_*sigma_, k_neighbour_search_, radius_search_, imp_wt);
 	
 	//test_weights = imp_wt;
 
 	int total_samples = resample_percent_ * num_pts;
-	std::vector<int> sampleIdx = sampleRandomDistribution(imp_wt, num_pts, total_samples);
-	//std::vector<int> sampleIdx = sampleNLargest(imp_wt, num_pts, total_samples);
+	//std::vector<int> sampleIdx = sampleRandomDistribution(imp_wt, num_pts, total_samples);
+	std::vector<int> sampleIdx = sampleNLargest(imp_wt, num_pts, total_samples);
 
 	resamplePC(input_, output, sampleIdx, total_samples);
 }

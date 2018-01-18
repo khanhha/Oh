@@ -89,6 +89,19 @@ void write_obj_points(std::string filename, const std::vector<Vector3f> &points)
 	of.close();
 }
 
+void write_obj_points(std::string filename, const PointCloud<PointXYZ> &cloud, const std::vector<Vector3i> &colors)
+{
+	std::ofstream of(filename);
+	for (size_t i = 0; i < cloud.points.size(); ++i)
+	{
+		auto &p = cloud.points[i];
+		Vector3f c = colors[i].cast<float>();
+		c = c / 255.0f;
+		of << "v " << p.x << " " << p.y << " " << p.z << " " << c[0] << " " << c[1] << " " << c[2] << std::endl;
+	}
+	of.close();
+}
+
 void write_obj_points(std::string filename, const PointCloud<PointXYZ> &cloud, Vector3f color = Vector3f(1.0f, 0.0f, 0.0f))
 {
 	std::ofstream of(filename);
@@ -116,6 +129,46 @@ void test_uniform_octree_sample()
 	sampler.setInputNormalCloud(normal);
 	sampler.setOctreeNormalThreshold(0.8);
 	sampler.filter(*out_cloud);
+}
+
+vtkSmartPointer<vtkActor> vtk_build_segments_actor(std::vector<Vector3f> &segments, Vector3f color = Vector3f(1.0f, 0.0f, 0.0f), float linewidth = 3.0f)
+{
+	size_t npoints = segments.size();
+	size_t nsegments = npoints / 2;
+	auto vtk_pcoords = vtkSmartPointer<vtkFloatArray>::New();
+	vtk_pcoords->SetNumberOfComponents(3);
+	vtk_pcoords->SetNumberOfTuples(npoints);
+	for (size_t i = 0; i < npoints; ++i)
+	{
+		auto &p = segments[i];
+		vtk_pcoords->SetTuple3(i, p[0], p[1], p[2]);
+	}
+
+	auto vtk_points = vtkSmartPointer<vtkPoints>::New();
+	vtk_points->SetData(vtk_pcoords);
+
+	auto lines = vtkSmartPointer<vtkCellArray>::New();
+	lines->Allocate(npoints, 1000);
+	for (size_t i = 0; i < nsegments; ++i)
+	{
+		lines->InsertNextCell(2);
+		lines->InsertCellPoint(i * 2);
+		lines->InsertCellPoint(i * 2 + 1);
+	}
+
+	vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
+	polydata->SetPoints(vtk_points);
+	polydata->SetLines(lines);
+
+	vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+	mapper->SetInputData(polydata);
+
+	auto actor = vtkSmartPointer<vtkActor>::New();
+	actor->SetMapper(mapper);
+	actor->GetProperty()->SetColor(color(0), color(1), color(2));
+	actor->GetProperty()->SetLineWidth(linewidth);
+
+	return actor;
 }
 
 vtkSmartPointer<vtkActor> vtk_build_box_actor(std::vector<std::pair<Vector3f, Vector3f>> &bounds, Vector3f color = Vector3f(1.0f, 0.0f, 0.0f), float linewidth = 1.0f)
@@ -236,32 +289,51 @@ vtkSmartPointer<vtkActor> vtk_build_points_actor(const std::vector<PointXYZ, Eig
 	return vtk_build_points_actor(e_points, color, size);
 }
 
-vtkSmartPointer<vtkActor> vtk_build_points_actor(const std::vector<PointXYZ, Eigen::aligned_allocator<PointXYZ> > &points, 
-	std::vector<float> color_scalars, float size = 1.0f)
+std::vector<Vector3i> scalarToColor(const std::vector<float> &color_scalars)
 {
-	std::vector<Vector3f> e_points;
 	std::vector<Vector3i> color_points;
-
-	Vector3f color;
+	std::vector<float> sorted_scalars = color_scalars;
+	std::sort(sorted_scalars.begin(), sorted_scalars.end());
+	float rangemin = sorted_scalars[0.1 * sorted_scalars.size()];
+	float rangemax = sorted_scalars[0.9 * sorted_scalars.size()];
 	float max_scl;
-	if(!color_scalars.empty())
-		max_scl = *(std::max_element(color_scalars.begin(), color_scalars.end()));
-	
-	for (auto i =  0; i < points.size(); ++i)
+	//if (!color_scalars.empty())
+	//	max_scl = *(std::max_element(color_scalars.begin(), color_scalars.end()));
+
+	for (auto i = 0; i < color_scalars.size(); ++i)
 	{
-		auto &p = points[i];
-		Vector3f tmp(p.x, p.y, p.z);
-		e_points.push_back(tmp);
-		
 		Vector3i c;
-		if (!color_scalars.empty())
-			c = Vector3i(255 * (color_scalars[i] / max_scl), 0, 0);
+		if (!color_scalars.empty()) 
+		{
+			float val = color_scalars[i];
+			//val = std::clamp(val, rangemin, rangemax);
+			val = std::max(val, rangemin);
+			val = std::min(val, rangemax);
+			float scale = (val - rangemin) / (rangemax - rangemin);
+			c = Vector3i(255 * scale, 0, 0);
+		}
 		else
 			c = Vector3i(255, 0, 0);
 
 		color_points.push_back(c);
 	}
 
+	return color_points;
+}
+
+vtkSmartPointer<vtkActor> vtk_build_points_actor(const std::vector<PointXYZ, Eigen::aligned_allocator<PointXYZ> > &points, 
+	std::vector<float> color_scalars, float size = 1.0f)
+{
+	std::vector<Vector3f> e_points;
+	std::vector<Vector3i> color_points = scalarToColor(color_scalars);
+
+	Vector3f color = Vector3f(1.0f, 0, 0);
+	for (auto i =  0; i < points.size(); ++i)
+	{
+		auto &p = points[i];
+		Vector3f tmp(p.x, p.y, p.z);
+		e_points.push_back(tmp);
+	}
 	return vtk_build_points_actor(e_points, color, size, color_points);
 }
 
@@ -455,17 +527,39 @@ void test_weight_sampling()
 	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	WeightSampling<PointXYZ> sampler;
 	sampler.setInputCloud(cloud);
-	sampler.setKNeighbourSearch(10);
+	//sampler.setKNeighbourSearch(10);
+	sampler.setRadiusSearch(5);
 	sampler.setSigma(1.5);
-	sampler.setResamplePercent(0.3);
+	sampler.setResamplePercent(0.2);
 	sampler.filter(*out_cloud);
 
+	//std::vector<Vector3i> colors = scalarToColor(sampler.test_weights);
 	write_obj_points("D:\\Projects\\Oh\\data\\resample_weight_result\\" + filename + "_graph_resampled.obj", *out_cloud);
 
-	auto cloud_actor = vtk_build_points_actor(cloud->points, Vector3f(1.0f, 0.0f, 0.0f), 1.0f);
-	auto sample_actor = vtk_build_points_actor(out_cloud->points, Vector3f(1.0f, 1.0f, 0.0f), 3.0f);
+	auto cloud_actor = vtk_build_points_actor(cloud->points, Vector3f(1.0f, 1.0f, 1.0f), 1.0f);
+	auto sample_actor = vtk_build_points_actor(out_cloud->points, Vector3f(1.0f, 1.0f, 1.0f), 1.0f);
+	auto test_point_actor = vtk_build_points_actor(sampler.test_sample_points, Vector3f(0.0f, 1.0f, 1.0f), 5.0f);
+	
+	auto segments_actor = vtk_build_segments_actor(sampler.test_segments);
 	g_ren1->AddActor(cloud_actor);
 	g_ren1->AddActor(sample_actor);
+	g_ren1->AddActor(segments_actor);
+	//g_ren1->AddActor(test_point_actor);
+#if 0
+	std::vector<std::pair<Vector3f, int>> text_points;
+	for (size_t i = 0; i < cloud->points.size(); i++)
+	{
+		if (i >= 111000 && i < 116000)
+		{
+			if (i == 113471 || i == 113472)
+				text_points.push_back(std::make_pair(cloud->points[i].getVector3fMap(), i));
+		}
+	}
+	auto point_id_text_actor = vtk_build_number_text(text_points, 0.1);
+	for (auto ac : point_id_text_actor)
+		g_ren1->AddActor(ac);
+#endif
+
 #endif
 }
 
