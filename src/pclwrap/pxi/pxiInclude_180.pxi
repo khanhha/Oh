@@ -24,6 +24,7 @@ include "Octree/OctreePointCloudNormal_180.pxi"
 
 # include "Vertices.pxi"
 include "Filters/OctreeSampling.pxi"
+include "Filters/WeightSampling.pxi"
 # include "Filters/CropHull_180.pxi"
 # include "Filters/CropBox_180.pxi"
 # include "Filters/ProjectInliers.pxi"
