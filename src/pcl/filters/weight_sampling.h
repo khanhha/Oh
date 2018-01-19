@@ -96,9 +96,9 @@ namespace pcl
 	};
 }
 
-#ifdef PCL_NO_PRECOMPILE
+//#ifdef PCL_NO_PRECOMPILE
 #include <pcl/filters/impl/weight_sampling.hpp>
-#endif
+//#endif
 
 #endif  //#ifndef PCL_FILTERS_UNIFORM_SAMPLING_H_
 

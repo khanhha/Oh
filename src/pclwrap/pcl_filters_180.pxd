@@ -1608,3 +1608,14 @@ cdef extern from "pcl/filters/octree_sampling.h" namespace "pcl":
         void setInterpolationMethod(InterpolationMethod inter);
 ##
 ctypedef OctreeSampling[cpp.PointXYZ] OctreeSampling_t
+
+####################################################################
+cdef extern from "pcl/filters/weight_sampling.h" namespace "pcl":
+    cdef cppclass WeightSampling[T](Filter[T]):
+        WeightSampling()
+        void setResamplePercent(float percent)
+        void setKNeighbourSearch(int k)
+        void setRadiusSearch(float radius)
+        void setSigma(float sig)
+
+ctypedef WeightSampling[cpp.PointXYZ] WeightSampling_t
