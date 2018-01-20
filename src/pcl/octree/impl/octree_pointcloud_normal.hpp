@@ -45,6 +45,7 @@
 #include <Windows.h>
 #endif
 #include <stack>
+#include <iostream>
 #include <pcl/octree/impl/octree_pointcloud.hpp>
 
 template<typename PointT, typename NormalT, typename LeafContainerT /*= OctreeContainerPointIndices*/, typename BranchContainerT /*= OctreeContainerEmpty */>
@@ -60,8 +61,8 @@ void pcl::octree::OctreePointCloudNormal<PointT, NormalT, LeafContainerT, Branch
 	{
 		std::vector<OctreeKey> expand_leaf_keys;
 
-		OctreeT::LeafNodeIterator leafIter, leafEnd = leaf_end();
-		for (leafIter = leaf_begin(); leafIter != leafEnd; ++leafIter)
+		typename OctreeT::LeafNodeIterator leafIter, leafEnd = this->leaf_end();
+		for (leafIter = this->leaf_begin(); leafIter != leafEnd; ++leafIter)
 		{
 			LeafNode *leaf = static_cast<LeafNode*>(*leafIter);
 			OctreeContainerPointIndices *container = static_cast<OctreeContainerPointIndices*>(leaf->getContainerPtr());
@@ -71,9 +72,9 @@ void pcl::octree::OctreePointCloudNormal<PointT, NormalT, LeafContainerT, Branch
 				float normal_deviation = normalThreshold(container);
 				if (normal_deviation < leaf_normal_threshold_)
 				{
-					const PointT &point_sample = input_->points[container->getPointIndicesVector()[0]];
+					const PointT &point_sample = this->input_->points[container->getPointIndicesVector()[0]];
 					OctreeKey    point_key;
-					genOctreeKeyforPoint(point_sample, point_key);
+					this->genOctreeKeyforPoint(point_sample, point_key);
 					expand_leaf_keys.push_back(point_key);
 				}
 			}
@@ -93,40 +94,40 @@ void pcl::octree::OctreePointCloudNormal<PointT, NormalT, LeafContainerT, Branch
 				OctreeKey s = splitLeafs.top();
 				splitLeafs.pop();
 
-				unsigned int  depth_search = findLeafRecursive(s, this->depth_mask_, this->root_node_, leaf, branch);
+				unsigned int  depth_search = this->findLeafRecursive(s, this->depth_mask_, this->root_node_, leaf, branch);
 				if (leaf == nullptr)
 				{
-					cerr << "no leaf found at key " << s.x << ", " << s.y << ", " << s.z << std::endl;
+					std::cerr << "no leaf found at key " << s.x << ", " << s.y << ", " << s.z << std::endl;
 				}
 				else
 				{
 					if (depth_search == 0)
 					{
-						cerr << "couldn't split more. reach the limit of octree resolution";
+						std::cerr << "couldn't split more. reach the limit of octree resolution";
 					}
 					else
 					{
 						unsigned char child_idx = s.getChildIdxWithDepthMask(depth_search << 1);
 
-						assert(getBranchChildPtr(*branch, child_idx)->getNodeType() == LEAF_NODE);
-						expandLeafNode(leaf, branch, child_idx, depth_search);
-						assert(getBranchChildPtr(*branch, child_idx)->getNodeType() == BRANCH_NODE); //the leaf node is now replaced by a  new branch node
+						assert(this->getBranchChildPtr(*branch, child_idx)->getNodeType() == LEAF_NODE);
+						this->expandLeafNode(leaf, branch, child_idx, depth_search);
+						assert(this->getBranchChildPtr(*branch, child_idx)->getNodeType() == BRANCH_NODE); //the leaf node is now replaced by a  new branch node
 
-						BranchNode *new_branch = static_cast<BranchNode*>(getBranchChildPtr(*branch, child_idx));
+						BranchNode *new_branch = static_cast<BranchNode*>(this->getBranchChildPtr(*branch, child_idx));
 						assert(new_branch != nullptr);
 
 						for (unsigned char i = 0; i < 8; ++i)
 						{
-							if (branchHasChild(*new_branch, i) && getBranchChildPtr(*new_branch, i)->getNodeType() == LEAF_NODE)
+							if (this->branchHasChild(*new_branch, i) && this->getBranchChildPtr(*new_branch, i)->getNodeType() == LEAF_NODE)
 							{
-								LeafNode *new_leaf = static_cast<LeafNode*>(getBranchChildPtr(*new_branch, i));
+								LeafNode *new_leaf = static_cast<LeafNode*>(this->getBranchChildPtr(*new_branch, i));
 								OctreeContainerPointIndices *container = static_cast<OctreeContainerPointIndices*>(new_leaf->getContainerPtr());
 
 								if (container->getSize() > 1 && normalThreshold(container) < leaf_normal_threshold_)
 								{
-									const PointT &point_sample = input_->points[container->getPointIndicesVector()[0]];
+									const PointT &point_sample = this->input_->points[container->getPointIndicesVector()[0]];
 									OctreeKey    point_key;
-									genOctreeKeyforPoint(point_sample, point_key);
+									this->genOctreeKeyforPoint(point_sample, point_key);
 									splitLeafs.push(point_key);
 								}
 							}
@@ -152,7 +153,7 @@ float pcl::octree::OctreePointCloudNormal<PointT, NormalT, LeafContainerT, Branc
 
 	for (it = indices.cbegin(); it != it_end; ++it)
 	{
-		const Eigen::Vector3f& p = input_->at(*it).getVector3fMap();
+		const Eigen::Vector3f& p = this->input_->at(*it).getVector3fMap();
 		bmin = bmin.array().min(p.array());
 		bmax = bmax.array().max(p.array());
 	}

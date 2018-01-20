@@ -845,7 +845,7 @@ template<typename PointT, typename LeafContainerT /*= OctreeContainerPointIndice
 	typename OctreeT /*= OctreeBase<LeafContainerT, BranchContainerT> */>
 	int pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::getAllLeafKeys(std::vector<OctreeKey> &keys, std::vector<int> &depths) const
 {
-	pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::LeafNodeIterator tree_it_end = leaf_cend();
+	pcl::octree::OctreePointCloud<PointT, LeafContainerT, BranchContainerT, OctreeT>::LeafNodeIterator tree_it_end = this->leaf_cend();
 	keys.clear(); depths.clear();
 	
 

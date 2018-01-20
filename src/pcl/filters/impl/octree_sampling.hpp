@@ -7,6 +7,85 @@ using namespace pcl;
 using namespace Eigen;
 
 
+inline float squareDistance(const Vector3f &p0, const Vector3f &p1, const size_t &u, const size_t &v)
+{
+	const float du = p0[u] - p1[u];
+	const float dv = p0[v] - p1[v];
+	return (du * du + dv * dv);
+}
+
+inline bool planeRayInteraction(const Eigen::Vector3f &plane_n, const Eigen::Vector3f &plane_p, const Eigen::Vector3f &org, const Vector3f &dir, Vector3f &inter)
+{
+	float denom = dir.dot(plane_n);
+	if (denom != 0.0f) {
+		float t = (plane_p - org).dot(plane_n) / denom;
+		inter = org + t * dir;
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+//adapted from  http://geomalgorithms.com/a03-_inclusion.html
+// cn_PnPoly(): crossing number test for a point in a polygon
+//      Input:   P = a point,
+//               V[] = vertex points of a polygon V[n+1] with V[n]=V[0]
+//      Return:  0 = outside, 1 = inside
+// This code is patterned after [Franklin, 2000]
+inline int IsPointInsidePoly(const Vector3f &P, const std::vector<Vector3f> &V, const size_t &n, const size_t &u, const size_t &v)
+{
+	size_t    cn = 0;    // the  crossing number counter
+						 // loop through all edges of the polygon
+	for (int i = 0; i < n; i++) {    // edge from V[i]  to V[i+1]
+		if (((V[i][v] <= P[v]) && (V[i + 1][v] > P[v]))     // an upward crossing
+			|| ((V[i][v] > P[v]) && (V[i + 1][v] <= P[v]))) { // a downward crossing
+															  // compute  the actual edge-ray intersect x-coordinate
+			float vt = (float)(P[v] - V[i][v]) / (V[i + 1][v] - V[i][v]);
+			if (P[u] < V[i][u] + vt * (V[i + 1][u] - V[i][u])) // P[u] < intersect
+				++cn;   // a valid crossing of y=P.y right of P.x
+		}
+	}
+
+	return (cn & 1);    // 0 if even (out), and 1 if  odd (in)
+}
+
+// 2D cross product of OA and OB vectors, i.e. z-component of their 3D cross product.
+// Returns a positive value, if OAB makes a counter-clockwise turn,
+// negative for clockwise turn, and zero if the points are collinear.
+inline float cross(const Vector3f &O, const Vector3f &A, const Vector3f &B, size_t u, size_t v)
+{
+	return (A[u] - O[u]) * (B[v] - O[v]) - (A[v] - O[v]) * (B[u] - O[u]);
+}
+
+// Returns a list of points on the convex hull in counter-clockwise order.
+// Note: the last point in the returned list is the same as the first one.
+size_t buildConvexHull(vector<Vector3f> &P, std::vector<Vector3f> &H, size_t u, size_t v)
+{
+	int n = P.size(), k = 0;
+	if (n == 1) return P.size();
+	H.resize(2 * n);
+
+	// Sort points lexicographically
+	std::sort(P.begin(), P.end(), [&](const Vector3f &a, const Vector3f &b) {return a[u] < b[u] || (a[u] == b[u] && a[v] < b[v]); });
+
+	// Build lower hull
+	for (int i = 0; i < n; ++i) {
+		while (k >= 2 && cross(H[k - 2], H[k - 1], P[i], u, v) <= 0) k--;
+		H[k++] = P[i];
+	}
+
+	// Build upper hull
+	for (int i = n - 2, t = k + 1; i >= 0; i--) {
+		while (k >= t && cross(H[k - 2], H[k - 1], P[i], u, v) <= 0) k--;
+		H[k++] = P[i];
+	}
+
+	H.resize(k - 1);
+
+	return H.size();
+}
+
 template <typename PointT>
 void pcl::OctreeSampling<PointT>::applyFilter(PointCloud &output)
 {
@@ -25,14 +104,14 @@ template <typename PointT>
 void pcl::OctreeSampling<PointT>::filterUniform(PointCloud &output)
 {
 	typedef octree::OctreePointCloud<PointT> MyOctree;
-	MyOctree octree(sampling_resolution_);
-	octree.setInputCloud(input_);
-	octree.addPointsFromInputCloud();
+	MyOctree oc(sampling_resolution_);
+	oc.setInputCloud(this->input_);
+	oc.addPointsFromInputCloud();
 
-	MyOctree::LeafNodeIterator leafIter, leafEnd = octree.leaf_end();
-	for (leafIter = octree.leaf_begin(); leafIter != leafEnd; ++leafIter)
+	typename MyOctree::LeafNodeIterator leafIter, leafEnd = oc.leaf_end();
+	for (leafIter = oc.leaf_begin(); leafIter != leafEnd; ++leafIter)
 	{
-		MyOctree::LeafNode *leaf = static_cast<MyOctree::LeafNode*>(*leafIter);
+		typename  MyOctree::LeafNode *leaf = static_cast<typename MyOctree::LeafNode*>(*leafIter);
 		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 		const std::vector<int> &indices = container->getPointIndicesVector();
 
@@ -40,7 +119,7 @@ void pcl::OctreeSampling<PointT>::filterUniform(PointCloud &output)
 		if (interpolation_ == InterpolationMethod::CLOSEST_TO_CENTER)
 		{
 			PointT p;
-			octree.genLeafNodeCenterFromOctreeKey(leafIter.getCurrentOctreeKey(), p);
+			oc.genLeafNodeCenterFromOctreeKey(leafIter.getCurrentOctreeKey(), p);
 			Vector3f leaf_center(p.x, p.y, p.z);
 			closestPoint(indices, leaf_center, sample_point);
 		}
@@ -61,15 +140,15 @@ template <typename PointT>
 void pcl::OctreeSampling<PointT>::filterNonuniformMaxPointsPerLeaf(PointCloud &output)
 {
 	typedef octree::OctreePointCloud<PointT> MyOctree;
-	MyOctree octree(octree_resolution_);
-	octree.setInputCloud(input_);
-	octree.enableDynamicDepth(max_points_per_octree_leaf_);
-	octree.addPointsFromInputCloud();
+	MyOctree oc(octree_resolution_);
+	oc.setInputCloud(this->input_);
+	oc.enableDynamicDepth(max_points_per_octree_leaf_);
+	oc.addPointsFromInputCloud();
 
-	MyOctree::LeafNodeIterator leafIter, leafEnd = octree.leaf_end();
-	for (leafIter = octree.leaf_begin(); leafIter != leafEnd; ++leafIter)
+	typename MyOctree::LeafNodeIterator leafIter, leafEnd = oc.leaf_end();
+	for (leafIter = oc.leaf_begin(); leafIter != leafEnd; ++leafIter)
 	{
-		MyOctree::LeafNode *leaf = static_cast<MyOctree::LeafNode*>(*leafIter);
+		typename MyOctree::LeafNode *leaf = static_cast<typename MyOctree::LeafNode*>(*leafIter);
 		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 		const std::vector<int> &indices = container->getPointIndicesVector();
 
@@ -77,7 +156,7 @@ void pcl::OctreeSampling<PointT>::filterNonuniformMaxPointsPerLeaf(PointCloud &o
 		if (interpolation_ == InterpolationMethod::CLOSEST_TO_CENTER)
 		{
 			PointT p;
-			octree.genLeafNodeCenterFromOctreeKey(leafIter.getCurrentOctreeKey(), p);
+			oc.genLeafNodeCenterFromOctreeKey(leafIter.getCurrentOctreeKey(), p);
 			Vector3f leaf_center(p.x, p.y, p.z);
 			closestPoint(indices, leaf_center, sample_point);
 		}
@@ -98,7 +177,7 @@ template <typename PointT>
 void pcl::OctreeSampling<PointT>::filterNonuniformNormalThreshold(PointCloud &output)
 {
 	octree_.reset(new OctreeNormal(octree_resolution_));
-	octree_->setInputCloud(input_);
+	octree_->setInputCloud(this->input_);
 	octree_->enableDynamicDepth(64);
 	octree_->setInputNormalCloud(input_normal_cloud_);
 	octree_->setNormalThreshold(octree_normal_threshold);
@@ -114,11 +193,11 @@ void pcl::OctreeSampling<PointT>::filterNonuniformNormalThreshold(PointCloud &ou
 	radius_heights.reserve(20);
 	radius_sqr_dsts.reserve(20);
 
-	OctreeNormal::LeafNodeIterator leafIter, leafEnd = octree_->leaf_end();
+	typename OctreeNormal::LeafNodeIterator leafIter, leafEnd = octree_->leaf_end();
 	size_t test_cnt = 0;
 	for (leafIter = octree_->leaf_begin(); leafIter != leafEnd; ++leafIter, test_cnt++)
 	{
-		OctreeNormal::LeafNode *leaf = static_cast<OctreeNormal::LeafNode*>(*leafIter);
+		typename OctreeNormal::LeafNode *leaf = static_cast<typename OctreeNormal::LeafNode*>(*leafIter);
 		octree::OctreeContainerPointIndices *container = static_cast<octree::OctreeContainerPointIndices*>(leaf->getContainerPtr());
 		const std::vector<int> &indices = container->getPointIndicesVector();
 
@@ -220,85 +299,6 @@ void pcl::OctreeSampling<PointT>::filterNonuniformNormalThreshold(PointCloud &ou
 }
 
 
-inline float squareDistance(const Vector3f &p0, const Vector3f &p1, const size_t &u, const size_t &v)
-{
-	const float du = p0[u] - p1[u];
-	const float dv = p0[v] - p1[v];
-	return (du * du + dv * dv);
-}
-
-inline bool planeRayInteraction(const Eigen::Vector3f &plane_n, const Eigen::Vector3f &plane_p, const Eigen::Vector3f &org, const Vector3f &dir, Vector3f &inter)
-{
-	float denom = dir.dot(plane_n);
-	if (denom != 0.0f) {
-		float t = (plane_p - org).dot(plane_n) / denom;
-		inter = org + t * dir;
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-//adapted from  http://geomalgorithms.com/a03-_inclusion.html
-// cn_PnPoly(): crossing number test for a point in a polygon
-//      Input:   P = a point,
-//               V[] = vertex points of a polygon V[n+1] with V[n]=V[0]
-//      Return:  0 = outside, 1 = inside
-// This code is patterned after [Franklin, 2000]
-inline int IsPointInsidePoly(const Vector3f &P, const std::vector<Vector3f> &V, const size_t &n, const size_t &u, const size_t &v)
-{
-	size_t    cn = 0;    // the  crossing number counter
-	// loop through all edges of the polygon
-	for (int i = 0; i < n; i++) {    // edge from V[i]  to V[i+1]
-		if (((V[i][v] <= P[v]) && (V[i + 1][v] > P[v]))     // an upward crossing
-			|| ((V[i][v] > P[v]) && (V[i + 1][v] <= P[v]))) { // a downward crossing
-														  // compute  the actual edge-ray intersect x-coordinate
-			float vt = (float)(P[v] - V[i][v]) / (V[i + 1][v] - V[i][v]);
-			if (P[u] < V[i][u] + vt * (V[i + 1][u] - V[i][u])) // P[u] < intersect
-				++cn;   // a valid crossing of y=P.y right of P.x
-		}
-	}
-
-	return (cn & 1);    // 0 if even (out), and 1 if  odd (in)
-}
-
-// 2D cross product of OA and OB vectors, i.e. z-component of their 3D cross product.
-// Returns a positive value, if OAB makes a counter-clockwise turn,
-// negative for clockwise turn, and zero if the points are collinear.
-inline float cross(const Vector3f &O, const Vector3f &A, const Vector3f &B, size_t u, size_t v)
-{
-	return (A[u] - O[u]) * (B[v] - O[v]) - (A[v] - O[v]) * (B[u] - O[u]);
-}
-
-// Returns a list of points on the convex hull in counter-clockwise order.
-// Note: the last point in the returned list is the same as the first one.
-size_t buildConvexHull(vector<Vector3f> &P, std::vector<Vector3f> &H, size_t u, size_t v)
-{
-	int n = P.size(), k = 0;
-	if (n == 1) return P.size();
-	H.resize(2 * n);
-
-	// Sort points lexicographically
-	std::sort(P.begin(), P.end(), [&](const Vector3f &a, const Vector3f &b) {return a[u] < b[u] || (a[u] == b[u] && a[v] < b[v]);});
-
-	// Build lower hull
-	for (int i = 0; i < n; ++i) {
-		while (k >= 2 && cross(H[k - 2], H[k - 1], P[i], u, v) <= 0) k--;
-		H[k++] = P[i];
-	}
-
-	// Build upper hull
-	for (int i = n - 2, t = k + 1; i >= 0; i--) {
-		while (k >= t && cross(H[k - 2], H[k - 1], P[i], u, v) <= 0) k--;
-		H[k++] = P[i];
-	}
-
-	H.resize(k - 1);
-
-	return H.size();
-}
-
 template <typename PointT>
 bool pcl::OctreeSampling<PointT>::searchRadiusOnPlane(
 	const Eigen::Vector3f &plane_n, const Eigen::Vector3f &plane_p,
@@ -331,7 +331,7 @@ bool pcl::OctreeSampling<PointT>::searchRadiusOnPlane(
 	Vector3f avg = Vector3f::Zero();
 	for (int i = 0; i < npoints ; ++i)
 	{
-		const Vector3f tmp = input_->points[indices_3d[i]].getVector3fMap();
+		const Vector3f tmp = this->input_->points[indices_3d[i]].getVector3fMap();
 		ret_heights[i]  = tmp[height_axis] - leaf_bmin[height_axis];
 		ret_sqrt_dst[i] = squareDistance(search_p_3d, tmp, u, v);
 
@@ -352,7 +352,7 @@ size_t pcl::OctreeSampling<PointT>::searchPointsRadius(const Eigen::Vector3f &ce
 	int npoints = octree_->radiusSearch(p, radius, indices_3d, dst_3d);
 	for (int i = 0; i < npoints; ++i)
 		if (points)
-			points->push_back(input_->points[indices_3d[i]].getVector3fMap());
+			points->push_back(this->input_->points[indices_3d[i]].getVector3fMap());
 	if (dsts)
 		*dsts = std::move(dst_3d);
 
@@ -396,7 +396,7 @@ void pcl::OctreeSampling<PointT>::averagePlane(const std::vector<int> &indices, 
 	{
 		const Eigen::Vector3f& norm = input_normal_cloud_->at(*it).getNormalVector3fMap();
 		avg_norm += norm;
-		avg += input_->points[*it].getVector3fMap();
+		avg += this->input_->points[*it].getVector3fMap();
 	}
 	avg_norm /= indices.size();
 	avg_norm.normalize();
@@ -416,7 +416,7 @@ void pcl::OctreeSampling<PointT>::calcBounds(const std::vector<int> &indices, Ei
 
 	for (it = indices.cbegin(); it != it_end; ++it)
 	{
-		const Eigen::Vector3f& p = input_->at(*it).getVector3fMap();
+		const Eigen::Vector3f& p = this->input_->at(*it).getVector3fMap();
 		bmin = bmin.array().min(p.array());
 		bmax = bmax.array().max(p.array());
 	}
@@ -430,7 +430,7 @@ void pcl::OctreeSampling<PointT>::averagePoint(const std::vector<int> &indices, 
 	Eigen::Vector3f avg = Vector3f::Zero();
 	for (it = indices.cbegin(); it != it_end; ++it)
 	{
-		const Eigen::Vector3f& p = input_->at(*it).getVector3fMap();
+		const Eigen::Vector3f& p = this->input_->at(*it).getVector3fMap();
 		avg += p;
 	}
 	avg /= indices.size();
@@ -448,7 +448,7 @@ void pcl::OctreeSampling<PointT>::heightApproximate(const std::vector<int> &indi
 	if (indices.size() == 0) {
 		return;
 	}else if (indices.size() == 1){
-		const Vector3f &p = input_->points[indices[0]].getVector3fMap();
+		const Vector3f &p = this->input_->points[indices[0]].getVector3fMap();
 		sample_p.x = p.x();
 		sample_p.y = p.y();
 		sample_p.z = p.z();
@@ -464,7 +464,7 @@ void pcl::OctreeSampling<PointT>::heightApproximate(const std::vector<int> &indi
 	float total_weight = 0.0f;
 	for (size_t k = 0; k < indices.size(); ++k)
 	{
-		const Vector3f &p = input_->points[indices[k]].getVector3fMap();
+		const Vector3f &p = this->input_->points[indices[k]].getVector3fMap();
 		const float dst = squareDistance(avg_p, p, u_axis, v_axis);
 		const float w = (dst != 0.0f) ? (1.0f / dst) : 1.0f;
 		const float h_p = p[base_plane_axis] - bmin[base_plane_axis];
@@ -487,12 +487,12 @@ float pcl::OctreeSampling<PointT>::closestPoint(const std::vector<int> &indices,
 	float min_sqr_dst = std::numeric_limits<float>::max();
 	for (it = indices.cbegin(); it != it_end; ++it)
 	{
-		const Eigen::Vector3f& p = input_->at(*it).getVector3fMap();
+		const Eigen::Vector3f& p = this->input_->at(*it).getVector3fMap();
 		float sqr_dst = (p - center).squaredNorm();
 		if (sqr_dst < min_sqr_dst)
 		{
 			min_sqr_dst = sqr_dst;
-			closest = input_->at(*it);
+			closest = this->input_->at(*it);
 		}
 	}
 	return  sqrt(min_sqr_dst);

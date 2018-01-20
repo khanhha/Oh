@@ -296,7 +296,6 @@ std::vector<Vector3i> scalarToColor(const std::vector<float> &color_scalars)
 	std::sort(sorted_scalars.begin(), sorted_scalars.end());
 	float rangemin = sorted_scalars[0.1 * sorted_scalars.size()];
 	float rangemax = sorted_scalars[0.9 * sorted_scalars.size()];
-	float max_scl;
 	//if (!color_scalars.empty())
 	//	max_scl = *(std::max_element(color_scalars.begin(), color_scalars.end()));
 

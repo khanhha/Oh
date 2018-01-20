@@ -2210,13 +2210,13 @@ namespace nanoflann
 
 				// compute bounding-box of leaf points
 				for (int i = 0; i < (DIM > 0 ? DIM : this->dim); ++i) {
-					bbox[i].low = dataset_get(*this, this->vind[left], i);
-					bbox[i].high = dataset_get(*this, this->vind[left], i);
+					bbox[i].low = this->dataset_get(*this, this->vind[left], i);
+					bbox[i].high = this->dataset_get(*this, this->vind[left], i);
 				}
 				for (IndexType k = left + 1; k < right; ++k) {
 					for (int i = 0; i < (DIM > 0 ? DIM : this->dim); ++i) {
-						if (bbox[i].low > dataset_get(*this, this->vind[k], i)) bbox[i].low = dataset_get(*this, this->vind[k], i);
-						if (bbox[i].high < dataset_get(*this, this->vind[k], i)) bbox[i].high = dataset_get(*this, this->vind[k], i);
+						if (bbox[i].low > this->dataset_get(*this, this->vind[k], i)) bbox[i].low = this->dataset_get(*this, this->vind[k], i);
+						if (bbox[i].high < this->dataset_get(*this, this->vind[k], i)) bbox[i].high = this->dataset_get(*this, this->vind[k], i);
 					}
 				}
 			}
@@ -2224,7 +2224,7 @@ namespace nanoflann
 				IndexType idx;
 				int cutfeat;
 				DistanceType cutval;
-				middleSplit_(*this, &this->vind[0] + left, right - left, idx, cutfeat, cutval, bbox);
+				this->middleSplit_(*this, &this->vind[0] + left, right - left, idx, cutfeat, cutval, bbox);
 
 				node->node_type.sub.divfeat = cutfeat;
 
@@ -2367,13 +2367,13 @@ namespace nanoflann
 		void computeBoundingBox(BoundingBox& bbox, IndexType left, IndexType right) const
 		{
 			for (int i = 0; i < (DIM > 0 ? DIM : this->dim); ++i) {
-				bbox[i].low = dataset_get(*this, this->vind[left], i);
-				bbox[i].high = dataset_get(*this, this->vind[left], i);
+				bbox[i].low = this->dataset_get(*this, this->vind[left], i);
+				bbox[i].high = this->dataset_get(*this, this->vind[left], i);
 			}
 			for (IndexType k = left + 1; k < right; ++k) {
 				for (int i = 0; i < (DIM > 0 ? DIM : this->dim); ++i) {
-					if (bbox[i].low > dataset_get(*this, this->vind[k], i)) bbox[i].low = dataset_get(*this, this->vind[k], i);
-					if (bbox[i].high < dataset_get(*this, this->vind[k], i)) bbox[i].high = dataset_get(*this, this->vind[k], i);
+					if (bbox[i].low > this->dataset_get(*this, this->vind[k], i)) bbox[i].low = this->dataset_get(*this, this->vind[k], i);
+					if (bbox[i].high < this->dataset_get(*this, this->vind[k], i)) bbox[i].high = this->dataset_get(*this, this->vind[k], i);
 				}
 			}
 		}
@@ -2528,7 +2528,7 @@ namespace nanoflann
 			{
 				max_depth = std::max(depth, max_depth);
 			};
-			traverseTree(root_node, 0, depth_callback);
+			traverseTree(BaseClassRef::root_node, 0, depth_callback);
 
 			return max_depth;
 		}
@@ -2551,7 +2551,7 @@ namespace nanoflann
 					cnt++;
 			};
 
-			traverseTree(root_node, 0, callback);
+			traverseTree(BaseClassRef::root_node, 0, callback);
 
 			return cnt;
 		}
@@ -2565,7 +2565,7 @@ namespace nanoflann
 					cnt++;
 			};
 
-			traverseTree(root_node, 0, callback);
+			traverseTree(BaseClassRef::root_node, 0, callback);
 
 			return cnt;
 		}
@@ -2617,7 +2617,7 @@ namespace nanoflann
 				}
 			};
 
-			traverseTree(root_node, 0, callback);
+			traverseTree(BaseClassRef::root_node, 0, callback);
 
 			assert((bmin.size() % DIM) == 0);
 
@@ -2639,7 +2639,7 @@ namespace nanoflann
 				}
 			};
 
-			traverseDepthBounds(root_node, 0, depth_callback);
+			traverseDepthBounds(BaseClassRef::root_node, 0, depth_callback);
 
 			return depths.size();
 		}
@@ -2658,9 +2658,9 @@ namespace nanoflann
 				}
 			};
 
-			traverseDepthBounds(root_node, 0, depth_callback);
+			traverseDepthBounds(BaseClassRef::root_node, 0, depth_callback);
 
-			return bmin.size() / dim;
+			return bmin.size() / BaseClassRef::dim;
 		}
 
 

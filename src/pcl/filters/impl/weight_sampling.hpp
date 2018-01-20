@@ -171,7 +171,7 @@ std::vector<int> sampleNLargest(std::vector<float> weights, int num_pts, int tot
 
 	std::vector<std::pair<int, float>> weight_idx(weights.size());
 	for (size_t i = 0; i < weights.size(); ++i)
-		weight_idx[i] = std::make_pair(i, weights[i]);
+		weight_idx[i] = std::make_pair(static_cast<int>(i), weights[i]);
 
 	std::sort(
 		weight_idx.begin(), weight_idx.end(),
