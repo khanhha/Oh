@@ -9,6 +9,10 @@ Install steps
 
 
 Install VTK for octree visualization
- - download VTK 8.0.1 from https://www.lfd.uci.edu/~gohlke/pythonlibs/
- - guide to install vtk using whl file:  https://stackoverflow.com/questions/27885397/how-do-i-install-a-python-package-with-a-whl-file
+ - download VTK 8.0.1  from
+    - windows: https://www.lfd.uci.edu/~gohlke/pythonlibs/
+    - linux: https://pypi.python.org/pypi/vtk
+ - guide to install vtk using whl file:
+    - run command: pip install vtk-8.0.0.dev20170717-cp36-cp36m-manylinux1_x86_64.whl
+    - for linux: run the following command: export LD_LIBRARY_PATH=/home/khanh/anaconda3/lib/python3.6/site-packages/vtk
 
