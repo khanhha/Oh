@@ -1,4 +1,3 @@
-#if 0
 /*=========================================================================
 Program:   Visualization Toolkit
 Module:    Cone.cxx
@@ -54,7 +53,7 @@ VTK_MODULE_INIT(vtkInteractionStyle);
 #include <pcl/filters/uniform_sampling.h>
 #include <pcl/filters/octree_sampling.h>
 #include <pcl/filters/weight_sampling.h>
-
+#include <pcl/surface/convex_hull.h>
 
 #include <Eigen/Dense>
 
@@ -108,7 +107,7 @@ void write_obj_points(std::string filename, const PointCloud<PointXYZ> &cloud, V
 	std::ofstream of(filename);
 	for (auto &p : cloud.points)
 	{
-		of << "v " << p.x << " " << p.y << " " << p.z << " " << color[0] << " " << color[1] << " " << color[2] << std::endl;
+		of << "v " << p.x << " " << p.y << " " << p.z << " " <<color[0] <<" " << color[1] <<" " << color[2] <<std::endl;
 	}
 	of.close();
 }
@@ -175,19 +174,19 @@ vtkSmartPointer<vtkActor> vtk_build_segments_actor(std::vector<Vector3f> &segmen
 vtkSmartPointer<vtkActor> vtk_build_box_actor(std::vector<std::pair<Vector3f, Vector3f>> &bounds, Vector3f color = Vector3f(1.0f, 0.0f, 0.0f), float linewidth = 1.0f)
 {
 	static const float degenerate_threshold = 0.5f;
-	static const float box_offsets[8][3] = { { 0, 0, 0 },{ 1, 0, 0 },{ 0, 1, 0 },{ 0, 0, 1 },{ 1, 1, 0 },{ 0, 1, 1 },{ 1, 0, 1 },{ 1, 1, 1 } };
-	static const int   box_edges[12][2] = { { 0, 1 },{ 0, 2 },{ 0, 3 },{ 4, 7 },{ 5, 7 },{ 6, 7 },{ 1, 6 },{ 2, 5 },{ 2, 4 },{ 3, 6 },{ 3, 5 },{ 1, 4 } };
+	static const float box_offsets[8][3] = { { 0, 0, 0 }, { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }, { 1, 1, 0 }, { 0, 1, 1 }, { 1, 0, 1 }, { 1, 1, 1 } };
+	static const int   box_edges[12][2] = {{ 0, 1 }, {0, 2 }, { 0, 3 }, { 4, 7 }, { 5, 7 }, { 6, 7 }, { 1, 6 }, { 2, 5 }, { 2, 4 }, { 3, 6 }, { 3, 5 }, {1, 4}};
 
 	size_t nbox = bounds.size();
 	auto vtk_pcoords = vtkSmartPointer<vtkFloatArray>::New();
 	vtk_pcoords->SetNumberOfComponents(3);
 	vtk_pcoords->SetNumberOfTuples(nbox * 8);
-	for (size_t i = 0; i < nbox; ++i)
+	for(size_t i = 0; i < nbox; ++i)
 	{
 		Vector3f bmin = bounds[i].first;
 		Vector3f bmax = bounds[i].second;
 		Vector3f delta = bmax - bmin;
-		for (size_t j = 0; j < 3; ++j)
+		for(size_t j = 0; j <3; ++j)
 			delta[j] = std::max(delta[j], degenerate_threshold);
 
 		for (size_t j = 0; j < 8; ++j)
@@ -225,7 +224,7 @@ vtkSmartPointer<vtkActor> vtk_build_box_actor(std::vector<std::pair<Vector3f, Ve
 	actor->SetMapper(mapper);
 	actor->GetProperty()->SetColor(color(0), color(1), color(2));
 	actor->GetProperty()->SetLineWidth(linewidth);
-
+	
 	return actor;
 }
 
@@ -249,11 +248,11 @@ vtkSmartPointer<vtkActor> vtk_build_points_actor(std::vector<Vector3f> &points, 
 	vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
 	polydata->SetPoints(point_arr);
 	polydata->SetVerts(vertices);
-
+	
 	auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
 	mapper->SetInputData(polydata);
 	auto actor = vtkSmartPointer<vtkActor>::New();
-
+	
 	if (!vert_colors.empty())
 	{
 		vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New();
@@ -303,7 +302,7 @@ std::vector<Vector3i> scalarToColor(const std::vector<float> &color_scalars)
 	for (auto i = 0; i < color_scalars.size(); ++i)
 	{
 		Vector3i c;
-		if (!color_scalars.empty())
+		if (!color_scalars.empty()) 
 		{
 			float val = color_scalars[i];
 			//val = std::clamp(val, rangemin, rangemax);
@@ -321,14 +320,14 @@ std::vector<Vector3i> scalarToColor(const std::vector<float> &color_scalars)
 	return color_points;
 }
 
-vtkSmartPointer<vtkActor> vtk_build_points_actor(const std::vector<PointXYZ, Eigen::aligned_allocator<PointXYZ> > &points,
+vtkSmartPointer<vtkActor> vtk_build_points_actor(const std::vector<PointXYZ, Eigen::aligned_allocator<PointXYZ> > &points, 
 	std::vector<float> color_scalars, float size = 1.0f)
 {
 	std::vector<Vector3f> e_points;
 	std::vector<Vector3i> color_points = scalarToColor(color_scalars);
 
 	Vector3f color = Vector3f(1.0f, 0, 0);
-	for (auto i = 0; i < points.size(); ++i)
+	for (auto i =  0; i < points.size(); ++i)
 	{
 		auto &p = points[i];
 		Vector3f tmp(p.x, p.y, p.z);
@@ -349,7 +348,7 @@ std::vector<Actor3DPtr> vtk_build_number_text(std::vector<std::pair<Eigen::Vecto
 		Eigen::Vector3d p = ids[i].first.cast<double>();
 		actor->SetPosition(p.data());
 		actor->SetScale(scale);
-
+		
 		texts.push_back(actor);
 	}
 	return texts;
@@ -366,228 +365,29 @@ vtkSmartPointer<vtkActor> pcl_build_point_cloud_actor(PointCloud<PointXYZ>::Ptr 
 	return vtk_build_points_actor(points, Vector3f(1.0f, 1.0f, 1.0f), 2.0f);
 }
 
-
-string enumToString(OctreeSampling<PointXYZ>::ResampleMethod method)
-{
-	switch (method)
-	{
-	case pcl::OctreeSampling<pcl::PointXYZ>::ResampleMethod::UNIFORM:
-		return "uniform";
-		break;
-	case pcl::OctreeSampling<pcl::PointXYZ>::ResampleMethod::NONUNIFORM_MAX_POINTS_PER_LEAF:
-		return "nonuniform_max_point_per_leaf";
-		break;
-	case pcl::OctreeSampling<pcl::PointXYZ>::ResampleMethod::NONUNIFORM_NORMAL_THRESHOLD:
-		return "nonuniform_normal_threshodl";
-		break;
-	default:
-		return "";
-		break;
-	}
-}
-string enumToString(OctreeSampling<PointXYZ>::InterpolationMethod method)
-{
-	switch (method)
-	{
-	case pcl::OctreeSampling<pcl::PointXYZ>::InterpolationMethod::CLOSEST_TO_CENTER:
-		return "closest_to_center";
-		break;
-	case pcl::OctreeSampling<pcl::PointXYZ>::InterpolationMethod::AVERAGE:
-		return "average";
-		break;
-	case pcl::OctreeSampling<pcl::PointXYZ>::InterpolationMethod::HEIGHT_INTERPOLATION:
-		return "height_interpolation";
-		break;
-	default:
-		return "";
-		break;
-	}
-}
-
 vtkRenderer *g_ren1 = nullptr;
-void test_octree_resampling()
+
+void test_convex_hull()
 {
-	string filenames[] = {
-		"normal_lucy_none-Slice-54_center_vn"
-		//"normal_lucy_none-Slice-55_center_vn",
-		//"normal_lucy_none-Slice-56_center_vn",
-		//"normal_lucy_none-Slice-57_center_vn",
-		//"normal_lucy_tshirt-Slice-54_center_vn",
-		//"normal_lucy_tshirt-Slice-55_center_vn",
-		//"normal_lucy_tshirt-Slice-56_center_vn",
-		//"normal_lucy_tshirt-Slice-57_center_vn",
-		//"normal_lucy_none_repaired",
-		//"normal_lucy_standard_tee_repaired"
-	};
-
-
-	size_t nfiles = sizeof(filenames) / sizeof(string);
-	for (size_t i = 0; i < nfiles; ++i)
-	{
-		string filename = filenames[i];
-		string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
-		PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-		PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
-		io::cloud_load_point_cloud(basepath + filename + ".obj", basepath, cloud, normal);
-
-		OctreeSampling<PointXYZ>::ResampleMethod resample_med = OctreeSampling<PointXYZ>::ResampleMethod::UNIFORM;
-		OctreeSampling<PointXYZ>::InterpolationMethod inter_med = OctreeSampling<PointXYZ>::InterpolationMethod::HEIGHT_INTERPOLATION;
-
-		OctreeSampling<PointXYZ> sampler;
-		PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-		sampler.setResampleMethod(resample_med);
-		sampler.setInterpolationMethod(inter_med);
-		//sampler.setMaxPointsPerLeaf(6);
-		sampler.setSamplingResolution(5);
-		//sampler.setSampleRadiusSearch(5);
-		//sampler.setOctreeResolution(0.005);
-		//sampler.setOctreeNormalThreshold(0.9);
-
-		sampler.setInputCloud(cloud);
-		sampler.setInputNormalCloud(normal);
-		sampler.filter(*out_cloud);
-
-		write_obj_points("G:\\Projects\\Oh\\data\\resample_result\\" + filename + "_" + enumToString(resample_med) + "_" + enumToString(inter_med) + ".obj", *out_cloud);
-
-#if 1
-		auto sample_actor = vtk_build_points_actor(out_cloud->points, Vector3f(1.0f, 0.0f, 0.0f), 6.0f);
-		//auto sample_1_actor = vtk_build_points_actor(sampler.test_sample_points_1, Vector3f(0.0f, 1.0f, 1.0f), 6.0f);
-		//auto sample_2_actor = vtk_build_points_actor(sampler.test_sample_points_2, Vector3f(0.0f, 0.0f, 1.0f), 6.0f);
-		//auto node_point_actor = vtk_build_points_actor(sampler.test_node_points, Vector3f(1.0f, 1.0f, 0.0f), 3.0f);
-		//auto node_bb_actor = vtk_build_box_actor(sampler.test_node_bounds, Vector3f(0.3f, .6f, 0.1f));
-		//auto cloud_actor = pcl_build_point_cloud_actor(cloud);
-		//auto node_text_actors = vtk_build_number_text(sampler.test_node_ids, 0.02);
-
-		g_ren1->SetBackground(0.4, 0.4, 0.4);
-
-		g_ren1->AddActor(sample_actor);
-		//g_ren1->AddActor(sample_1_actor);
-		//g_ren1->AddActor(sample_2_actor);
-		//g_ren1->AddActor(cloud_actor);
-		//g_ren1->AddActor(node_point_actor);
-		//g_ren1->AddActor(node_bb_actor);
-		//for (auto ac : node_text_actors)
-		//	g_ren1->AddViewProp(ac);
-#endif
-	}
-
-	//string filename = "Armadillo"; //1 resolution
-	//string filename = "normal_oh_none_repaired_points"; //4 resolution
-	//string filename = "lucy_none-Slice-54_center_vn";
-
-
-}
-
-void test_weight_sampling()
-{
-#if 0
-	string filenames[] = {
-		"normal_lucy_none-Slice-54_center_vn",
-		"normal_lucy_none-Slice-55_center_vn",
-		"normal_lucy_none-Slice-56_center_vn",
-		"normal_lucy_none-Slice-57_center_vn",
-		"normal_lucy_tshirt-Slice-54_center_vn",
-		"normal_lucy_tshirt-Slice-55_center_vn",
-		"normal_lucy_tshirt-Slice-56_center_vn",
-		"normal_lucy_tshirt-Slice-57_center_vn",
-		"normal_lucy_none_repaired",
-		"normal_lucy_standard_tee_repaired"
-	};
-
-	size_t nfiles = sizeof(filenames) / sizeof(string);
-	for (size_t i = 0; i < nfiles; ++i)
-	{
-		string filename = filenames[i];
-		string basepath = "D:\\Projects\\Oh\\data\\test_data\\";
-		PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-		PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
-		io::cloud_load_point_cloud(basepath + filename + ".obj", basepath, cloud, normal);
-
-		PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-		WeightSampling<PointXYZ> sampler;
-		sampler.setInputCloud(cloud);
-		sampler.setKNeighbourSearch(10);
-		sampler.setSigma(1.5);
-		sampler.setResamplePercent(0.5);
-		sampler.filter(*out_cloud);
-
-		write_obj_points("D:\\Projects\\Oh\\data\\resample_weight_result\\" + filename + "_graph_resampled.obj", *out_cloud);
-	}
-#else
-	string filename = "normal_lucy_standard_tee_repaired";
-	//string filename = "cube";
-	//string filename = "Armadillo_points";
-	//string filename = "normal_oh_none_repaired";
-	//string filename = "lucy_none-Slice-54_center_vn";
-	string basepath = "D:\\Projects\\Oh\\data\\test_data\\";
-	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-	PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
-	io::cloud_load_point_cloud(basepath + filename + ".obj", basepath, cloud, normal);
-
-	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-	WeightSampling<PointXYZ> sampler;
-	sampler.setInputCloud(cloud);
-	//sampler.setKNeighbourSearch(10);
-	sampler.setRadiusSearch(5);
-	sampler.setSigma(1.5);
-	sampler.setResamplePercent(0.2);
-	sampler.filter(*out_cloud);
-
-	//std::vector<Vector3i> colors = scalarToColor(sampler.test_weights);
-	write_obj_points("D:\\Projects\\Oh\\data\\resample_weight_result\\" + filename + "_graph_resampled.obj", *out_cloud);
-
-	auto cloud_actor = vtk_build_points_actor(cloud->points, Vector3f(1.0f, 1.0f, 1.0f), 1.0f);
-	auto sample_actor = vtk_build_points_actor(out_cloud->points, Vector3f(1.0f, 1.0f, 1.0f), 1.0f);
-	auto test_point_actor = vtk_build_points_actor(sampler.test_sample_points, Vector3f(0.0f, 1.0f, 1.0f), 5.0f);
-
-	auto segments_actor = vtk_build_segments_actor(sampler.test_segments);
-	g_ren1->AddActor(cloud_actor);
-	g_ren1->AddActor(sample_actor);
-	g_ren1->AddActor(segments_actor);
-	//g_ren1->AddActor(test_point_actor);
-#if 0
-	std::vector<std::pair<Vector3f, int>> text_points;
-	for (size_t i = 0; i < cloud->points.size(); i++)
-	{
-		if (i >= 111000 && i < 116000)
-		{
-			if (i == 113471 || i == 113472)
-				text_points.push_back(std::make_pair(cloud->points[i].getVector3fMap(), i));
-		}
-	}
-	auto point_id_text_actor = vtk_build_number_text(text_points, 0.1);
-	for (auto ac : point_id_text_actor)
-		g_ren1->AddActor(ac);
-#endif
-
-#endif
-}
-
-void test_uniform_sampling()
-{
-	string filename = "Armadillo.obj";
+	//string filename = "Armadillo.obj";
 	//string filename = "normal_oh_none_repaired.obj";
-	//string filename = "lucy_none-Slice-54_center_vn.obj";
-	string basepath = "G:\\Projects\\Oh\\data\\test_data\\";
+	string filename = "lucy_none-Slice-54_center_vn.obj";
+	string basepath = "D:\\Projects\\Oh\\data\\test_data\\";
 	PointCloud<PointXYZ>::Ptr cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	PointCloud<Normal>::Ptr	normal = PointCloud<Normal>::Ptr(new PointCloud<Normal>());
 	io::cloud_load_point_cloud(basepath + filename, basepath, cloud, normal);
 
-	PointCloud<PointXYZ>::Ptr out_cloud = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
-	UniformSampling<PointXYZ> sampler;
-	sampler.setInputCloud(cloud);
-	sampler.setRadiusSearch(1.5);
-	sampler.filter(*out_cloud);
+
+	PointCloud<PointXYZ>::Ptr  out_hull = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	pcl::ConvexHull<PointXYZ> chull_builder;
+	chull_builder.setInputCloud(cloud);
+	chull_builder.setDimension(2);
+	chull_builder.setComputeAreaVolume(true);
+	chull_builder.reconstruct(*out_hull);
 
 
-	std::vector<Vector3f> sampler_points;
-	for (size_t i = 0; i < out_cloud->size(); ++i)
-	{
-		sampler_points.push_back(out_cloud->points[i].getArray3fMap());
-	}
-
-	auto cloud_actor = pcl_build_point_cloud_actor(cloud);
-	auto sample_actor = vtk_build_points_actor(sampler_points, Vector3f(1.0f, 0.0f, 0.0f), 3.0f);
+	auto cloud_actor = vtk_build_points_actor(cloud->points, Vector3f(1.0f, 1.0f, 1.0f), 1.0f);
+	auto sample_actor = vtk_build_points_actor(out_hull->points, Vector3f(1.0f, 0.0f, 0.0f), 4.0f);
 	g_ren1->AddActor(cloud_actor);
 	g_ren1->AddActor(sample_actor);
 }
@@ -597,14 +397,12 @@ int main()
 	g_ren1 = vtkRenderer::New();
 	g_ren1->SetBackground(0.4, 0.4, 0.4);
 
-	test_weight_sampling();
-	//test_uniform_sampling();
-	//test_octree_resampling();
+	test_convex_hull();
 
 	vtkRenderWindow *renWin = vtkRenderWindow::New();
 	renWin->AddRenderer(g_ren1);
 	renWin->SetSize(800, 600);
-
+		
 	vtkRenderWindowInteractor *iren = vtkRenderWindowInteractor::New();
 	iren->SetRenderWindow(renWin);
 
@@ -616,4 +414,3 @@ int main()
 
 	return 0;
 }
-#endif
