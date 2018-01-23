@@ -381,15 +381,17 @@ void test_convex_hull()
 	PointCloud<PointXYZ>::Ptr  out_hull = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
 	pcl::ConvexHull<PointXYZ> chull_builder;
 	chull_builder.setInputCloud(cloud);
-	chull_builder.setDimension(2);
+	chull_builder.setDimension(3);
 	chull_builder.setComputeAreaVolume(true);
 	chull_builder.reconstruct(*out_hull);
 
-
 	auto cloud_actor = vtk_build_points_actor(cloud->points, Vector3f(1.0f, 1.0f, 1.0f), 1.0f);
 	auto sample_actor = vtk_build_points_actor(out_hull->points, Vector3f(1.0f, 0.0f, 0.0f), 4.0f);
+	auto segment_actor = vtk_build_segments_actor(chull_builder.test_segments, Vector3f(1.0f, 1.0f, 0.0f), 1.0f);
+
 	g_ren1->AddActor(cloud_actor);
 	g_ren1->AddActor(sample_actor);
+	g_ren1->AddActor(segment_actor);
 }
 
 int main()
