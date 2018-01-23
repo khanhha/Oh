@@ -52,6 +52,7 @@
 // POINT_TYPES
 //
 
+#define PCL_NO_PRECOMPILE 1
 #ifdef PCL_NO_PRECOMPILE
 
 #define PCL_INSTANTIATE_PRODUCT_IMPL(r, product)
