@@ -3,9 +3,10 @@ Install steps
 2. Install latest cython version
 3. Install numpy
 4. start the command line window.
-5. move the folder /src/pclwrap
-6. run the command: python setup.py install
-7. run the example src/pclwrap/octree_test.py
+5. [linux] install build tools: sudo apt-get install build-essential
+6. move the folder /src/pclwrap
+7. run the command: python setup.py install
+8. run the example src/pclwrap/octree_test.py
 
 
 Install VTK for octree visualization
