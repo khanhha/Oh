@@ -25,7 +25,7 @@ from shared_ptr cimport shared_ptr
 # 
 # template <typename PointInT>
 # class PCLSurfaceBase: public PCLBase<PointInT>
-cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
+cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
     cdef cppclass PCLSurfaceBase[In](cpp.PCLBase[In]):
         PCLSurfaceBase()
         
@@ -38,9 +38,9 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
         # inline KdTreePtr getSearchMethod ()
         pclkdt.KdTreePtr_t getSearchMethod ()
 
-#       /** \brief Base method for surface reconstruction for all points given in
+#       /** \brief Base method for Surface reconstruction for all points given in
 #         * <setInputCloud (), setIndices ()> 
-#         * \param[out] output the resultant reconstructed surface model
+#         * \param[out] output the resultant reconstructed Surface model
 #       virtual void reconstruct (pcl::PolygonMesh &output) = 0;
 
 #       protected:
@@ -50,20 +50,20 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 #       virtual std::string getClassName () const { return (""); }
 ###
 
-# /** \brief SurfaceReconstruction represents a base surface reconstruction
-#   * class. All \b surface reconstruction methods take in a point cloud and
-#   * generate a new surface from it, by either re-sampling the data or
+# /** \brief SurfaceReconstruction represents a base Surface reconstruction
+#   * class. All \b Surface reconstruction methods take in a point cloud and
+#   * generate a new Surface from it, by either re-sampling the data or
 #   * generating new data altogether. These methods are thus \b not preserving
 #   * the topology of the original data.
 #   * \note Reconstruction methods that always preserve the original input
-#   * point cloud data as the surface vertices and simply construct the mesh on
+#   * point cloud data as the Surface vertices and simply construct the mesh on
 #   * top should inherit from \ref MeshConstruction.
 #   * \author Radu B. Rusu, Michael Dixon, Alexandru E. Ichim
-#   * \ingroup surface
+#   * \ingroup Surface
 #   */
 # template <typename PointInT>
 # class SurfaceReconstruction: public PCLSurfaceBase<PointInT>
-cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
+cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
     cdef cppclass SurfaceReconstruction[In](PCLSurfaceBase[In]):
         SurfaceReconstruction()
 #       public:
@@ -74,14 +74,14 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 #       using PCLSurfaceBase<PointInT>::tree_;
 #       using PCLSurfaceBase<PointInT>::getClassName;
 #       
-#       /** \brief Base method for surface reconstruction for all points given in
+#       /** \brief Base method for Surface reconstruction for all points given in
 #        * <setInputCloud (), setIndices ()> 
-#        * \param[out] output the resultant reconstructed surface model
+#        * \param[out] output the resultant reconstructed Surface model
 #        */
 #       virtual void reconstruct (pcl::PolygonMesh &output);
-#       /** \brief Base method for surface reconstruction for all points given in
+#       /** \brief Base method for Surface reconstruction for all points given in
 #         * <setInputCloud (), setIndices ()> 
-#         * \param[out] points the resultant points lying on the new surface
+#         * \param[out] points the resultant points lying on the new Surface
 #         * \param[out] polygons the resultant polygons, as a set of
 #         * vertices. The Vertices structure contains an array of point indices.
 #         */
@@ -92,12 +92,12 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 #       /** \brief A flag specifying whether or not the derived reconstruction
 #         * algorithm needs the search object \a tree.*/
 #       bool check_tree_;
-#       /** \brief Abstract surface reconstruction method. 
+#       /** \brief Abstract Surface reconstruction method.
 #         * \param[out] output the output polygonal mesh 
 #         */
 #       virtual void performReconstruction (pcl::PolygonMesh &output) = 0;
-#       /** \brief Abstract surface reconstruction method. 
-#         * \param[out] points the resultant points lying on the surface
+#       /** \brief Abstract Surface reconstruction method.
+#         * \param[out] points the resultant points lying on the Surface
 #         * \param[out] polygons the resultant polygons, as a set of vertices. The Vertices structure contains an array of point indices.
 #         */
 #       virtual void 
@@ -105,21 +105,21 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 #                              std::vector<pcl::Vertices> &polygons) = 0;
 ###
 
-# brief MeshConstruction represents a base surface reconstruction
+# brief MeshConstruction represents a base Surface reconstruction
 # class. All \b mesh constructing methods that take in a point cloud and
-# generate a surface that uses the original data as vertices should inherit
+# generate a Surface that uses the original data as vertices should inherit
 # from this class.
 # 
-# note Reconstruction methods that generate a new surface or create new
+# note Reconstruction methods that generate a new Surface or create new
 # vertices in locations different than the input data should inherit from
 # \ref SurfaceReconstruction.
 # 
 # author Radu B. Rusu, Michael Dixon, Alexandru E. Ichim
-# \ingroup surface
+# \ingroup Surface
 # 
 # template <typename PointInT>
 # class MeshConstruction: public PCLSurfaceBase<PointInT>
-cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
+cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
     cdef cppclass MeshConstruction[In](PCLSurfaceBase[In]):
         MeshConstruction()
         # public:
@@ -130,8 +130,8 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
         # using PCLSurfaceBase<PointInT>::tree_;
         # using PCLSurfaceBase<PointInT>::getClassName;
         
-        # brief Base method for surface reconstruction for all points given in <setInputCloud (), setIndices ()> 
-        # param[out] output the resultant reconstructed surface model
+        # brief Base method for Surface reconstruction for all points given in <setInputCloud (), setIndices ()>
+        # param[out] output the resultant reconstructed Surface model
         # 
         # note This method copies the input point cloud data from
         # PointCloud<T> to PointCloud2, and is implemented here for backwards
@@ -148,11 +148,11 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
         # /** \brief A flag specifying whether or not the derived reconstruction
         #   * algorithm needs the search object \a tree.*/
         # bool check_tree_;
-        # /** \brief Abstract surface reconstruction method. 
+        # /** \brief Abstract Surface reconstruction method.
         #   * \param[out] output the output polygonal mesh 
         #   */
         # virtual void performReconstruction (pcl::PolygonMesh &output) = 0;
-        # /** \brief Abstract surface reconstruction method. 
+        # /** \brief Abstract Surface reconstruction method.
         #   * \param[out] polygons the resultant polygons, as a set of vertices. The Vertices structure contains an array of point indices.
         #   */
         # virtual void performReconstruction (std::vector<pcl::Vertices> &polygons) = 0;
@@ -161,14 +161,14 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 # processing.h
 # namespace pcl
 # brief @b CloudSurfaceProcessing represents the base class for algorithms that take a point cloud as an input and
-# produce a new output cloud that has been modified towards a better surface representation. These types of
-# algorithms include surface smoothing, hole filling, cloud upsampling etc.
+# produce a new output cloud that has been modified towards a better Surface representation. These types of
+# algorithms include Surface smoothing, hole filling, cloud upsampling etc.
 # author Alexandru E. Ichim
-# ingroup surface
+# ingroup Surface
 # 
 # template <typename PointInT, typename PointOutT>
 # class CloudSurfaceProcessing : public PCLBase<PointInT>
-#cdef extern from "pcl/surface/processing.h" namespace "pcl":
+#cdef extern from "pcl/Surface/processing.h" namespace "pcl":
 #    cdef cppclass CloudSurfaceProcessing[In, Out](cpp.PCLBase[In]):
 #        CloudSurfaceProcessing()
 #       public:
@@ -187,7 +187,7 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 
 # /** \brief @b MeshProcessing represents the base class for mesh processing algorithms.
 #   * \author Alexandru E. Ichim
-#   * \ingroup surface
+#   * \ingroup Surface
 #   */
 # class PCL_EXPORTS MeshProcessing
 #       public:
@@ -199,15 +199,15 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 #       /** \brief Set the input mesh that we want to process
 #         * \param[in] input the input polygonal mesh
 #       void setInputMesh (const pcl::PolygonMeshConstPtr &input) 
-#       /** \brief Process the input surface mesh and store the results
-#         * \param[out] output the resultant processed surface model
+#       /** \brief Process the input Surface mesh and store the results
+#         * \param[out] output the resultant processed Surface model
 #       void process (pcl::PolygonMesh &output);
 #       protected:
 #       /** \brief Initialize computation. Must be called before processing starts. */
 #       virtual bool initCompute ();
 #       /** \brief UnInitialize computation. Must be called after processing ends. */
 #       virtual void deinitCompute ();
-#       /** \brief Abstract surface processing method. */
+#       /** \brief Abstract Surface processing method. */
 #       virtual void performProcessing (pcl::PolygonMesh &output) = 0;
 #       /** \brief Abstract class get name method. */
 #       virtual std::string getClassName () const { return (""); }
@@ -217,11 +217,11 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 
 
 # (1.6.0)allocator.h
-# (1.7.2) -> pcl/surface/3rdparty/poisson4
+# (1.7.2) -> pcl/Surface/3rdparty/poisson4
 # namespace pcl 
 # namespace poisson 
 # class AllocatorState
-# cdef extern from "pcl/surface/3rdparty/poisson4/allocator.h" namespace "pcl::poisson":
+# cdef extern from "pcl/Surface/3rdparty/poisson4/allocator.h" namespace "pcl::poisson":
 #     cdef cppclass AllocatorState:
 #         AllocatorState()
 #         # public:
@@ -229,10 +229,10 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 
 
 # (1.6.0) -> allocator.h
-# (1.7.2) -> pcl\surface\3rdparty\poisson4 ?
+# (1.7.2) -> pcl\Surface\3rdparty\poisson4 ?
 # template<class T>
 # class Allocator
-# cdef extern from "pcl/surface/3rdparty/poisson4/allocator.h" namespace "pcl::poisson":
+# cdef extern from "pcl/Surface/3rdparty/poisson4/allocator.h" namespace "pcl::poisson":
 #     cdef cppclass Allocator[T]:
 #         Allocator()
         # int blockSize;
@@ -279,7 +279,7 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 #   */
 # template <typename PointInT, typename PointOutT>
 # class BilateralUpsampling: public CloudSurfaceProcessing<PointInT, PointOutT>
-#cdef extern from "pcl/surface/bilateral_upsampling.h" namespace "pcl":
+#cdef extern from "pcl/Surface/bilateral_upsampling.h" namespace "pcl":
 #    cdef cppclass BilateralUpsampling[In, Out](CloudSurfaceProcessing[In, Out]):
 #        BilateralUpsampling()
         # public:
@@ -323,12 +323,12 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 ###
 
 # binary_node.h (1.6.0)
-# pcl/surface/3rdparty\poisson4\binary_node.h (1.7.2)
+# pcl/Surface/3rdparty\poisson4\binary_node.h (1.7.2)
 # namespace pcl
 # namespace poisson
 # template<class Real>
 # class BinaryNode
-# cdef extern from "pcl/surface/3rdparty/poisson4/binary_node.h" namespace "pcl::poisson":
+# cdef extern from "pcl/Surface/3rdparty/poisson4/binary_node.h" namespace "pcl::poisson":
 #    cdef cppclass BinaryNode[Real]:
 #        BinaryNode()
         # public:
@@ -359,7 +359,7 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 # namespace pcl
 # template<typename PointInT>
 # class ConcaveHull : public MeshConstruction<PointInT>
-#cdef extern from "pcl/surface/concave_hull.h" namespace "pcl":
+#cdef extern from "pcl/Surface/concave_hull.h" namespace "pcl":
 #    cdef cppclass ConcaveHull[In](MeshConstruction[In]):
 #        ConcaveHull()
         # public:
@@ -439,14 +439,14 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 # /** \brief Sort 2D points in a vector structure
 #   * \param p1 the first point
 #   * \param p2 the second point
-#   * \ingroup surface
+#   * \ingroup Surface
 #   */
 # inline bool
 # comparePoints2D (const std::pair<int, Eigen::Vector4f> & p1, const std::pair<int, Eigen::Vector4f> & p2)
 # 
 # template<typename PointInT>
 # class ConvexHull : public MeshConstruction<PointInT>
-cdef extern from "pcl/surface/convex_hull.h" namespace "pcl":
+cdef extern from "pcl/Surface/convex_hull.h" namespace "pcl":
     cdef cppclass ConvexHull[In](MeshConstruction[In]):
         ConvexHull()
         # protected:
@@ -574,7 +574,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #   * The code is inspired by Flavien Brebion implementation, which is
 #   * in n^3 and does not handle holes.
 #   * \author Nicolas Burrus
-#   * \ingroup surface
+#   * \ingroup Surface
 # class PCL_EXPORTS EarClipping : public MeshProcessing
 #       public:
 #       using MeshProcessing::input_mesh_;
@@ -590,7 +590,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 # 
 #       /** \brief This method should get called before starting the actual computation. */
 #       bool initCompute ();
-#       /** \brief The actual surface reconstruction method. 
+#       /** \brief The actual Surface reconstruction method.
 #         * \param[out] output the output polygonal mesh 
 #         */
 #       void performProcessing (pcl::PolygonMesh &output);
@@ -634,7 +634,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # factor.h(1.6.0)
-# pcl/surface/3rdparty/poisson4/factor.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/factor.h (1.7.2)
 # namespace pcl
 # namespace poisson
 # 
@@ -655,12 +655,12 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # function_data.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/function_data.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/function_data.h (1.7.2)
 # namespace pcl 
 # namespace poisson 
 # template<int Degree,class Real>
 # class FunctionData
-# cdef extern from "pcl/surface/function_data.h" namespace "pcl::poisson":
+# cdef extern from "pcl/Surface/function_data.h" namespace "pcl::poisson":
 #     cdef cppclass FunctionData:
 #         FunctionData()
 #         int useDotRatios;
@@ -694,7 +694,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # geometry.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/geometry.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/geometry.h (1.7.2)
 # namespace pcl
 # namespace poisson 
 #   {
@@ -959,7 +959,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #     * \param S1 2D coordinate of the segment's first point
 #     * \param S2 2D coordinate of the segment's secont point
 #     * \param R 2D coorddinate of the reference point (defaults to 0,0)
-#     * \ingroup surface
+#     * \ingroup Surface
 #     */
 #   inline bool 
 #   isVisible (const Eigen::Vector2f &X, const Eigen::Vector2f &S1, const Eigen::Vector2f &S2, 
@@ -969,11 +969,11 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #   * based on local 2D projections. It assumes locally smooth surfaces and relatively smooth transitions between
 #   * areas with different point densities.
 #   * \author Zoltan Csaba Marton
-#   * \ingroup surface
+#   * \ingroup Surface
 #   */
 # template <typename PointInT>
 # class GreedyProjectionTriangulation : public MeshConstruction<PointInT>
-#cdef extern from "pcl/surface/gp3.h" namespace "pcl::poisson":
+#cdef extern from "pcl/Surface/gp3.h" namespace "pcl::poisson":
 #    cdef cppclass GreedyProjectionTriangulation[In](MeshConstruction[In]):
 #        GreedyProjectionTriangulation()
 #       public:
@@ -1026,11 +1026,11 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       /** \brief Get the parameter for distance based weighting of neighbors. */
 #       inline double getMaximumAngle ()
 #       /** \brief Don't consider points for triangulation if their normal deviates more than this value from the query point's normal.
-#         * \param[in] eps_angle maximum surface angle
+#         * \param[in] eps_angle maximum Surface angle
 #         * \note As normal estimation methods usually give smooth transitions at sharp edges, this ensures correct triangulation
 #         *       by avoiding connecting points from one side to points from the other through forcing the use of the edge points.
 #       inline void setMaximumSurfaceAngle (double eps_angle)
-#       /** \brief Get the maximum surface angle. */
+#       /** \brief Get the maximum Surface angle. */
 #       inline double getMaximumSurfaceAngle ()
 #       /** \brief Set the flag if the input normals are oriented consistently.
 #         * \param[in] consistent set it to true if the normals are consistently oriented
@@ -1064,7 +1064,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       double minimum_angle_;
 #       /** \brief The maximum angle for the triangles. */
 #       double maximum_angle_;
-#       /** \brief Maximum surface angle. */
+#       /** \brief Maximum Surface angle. */
 #       double eps_angle_;
 #       /** \brief Set this to true if the normals of the input are consistently oriented. */
 #       bool consistent_;
@@ -1091,14 +1091,14 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #   };
 # 
 # 
-#   /** \brief Grid projection surface reconstruction method.
+#   /** \brief Grid projection Surface reconstruction method.
 #     * \author Rosie Li
 #     *
 #     * \note If you use this code in any academic work, please cite:
 #     *   - Ruosi Li, Lu Liu, Ly Phan, Sasakthi Abeysinghe, Cindy Grimm, Tao Ju.
 #     *     Polygonizing extremal surfaces with manifold guarantees.
 #     *     In Proceedings of the 14th ACM Symposium on Solid and Physical Modeling, 2010.
-#      * \ingroup surface
+#      * \ingroup Surface
 #     */
 #   template <typename PointNT>
 #   class GridProjection : public SurfaceReconstruction<PointNT>
@@ -1226,32 +1226,32 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       void 
 #       getBoundingBox ();
 # 
-#       /** \brief The actual surface reconstruction method.
+#       /** \brief The actual Surface reconstruction method.
 #         * \param[out] polygons the resultant polygons, as a set of vertices. The Vertices structure contains an array of point indices.
 #         */
 #       bool
 #       reconstructPolygons (std::vector<pcl::Vertices> &polygons);
 # 
-#       /** \brief Create the surface. 
+#       /** \brief Create the Surface.
 #         *
 #         * The 1st step is filling the padding, so that all the cells in the padding
 #         * area are in the hash map. The 2nd step is store the vector, and projected
-#         * point. The 3rd step is finding all the edges intersects the surface, and
-#         * creating surface.
+#         * point. The 3rd step is finding all the edges intersects the Surface, and
+#         * creating Surface.
 #         *
 #         * \param[out] output the resultant polygonal mesh
 #         */
 #       void 
 #       performReconstruction (pcl::PolygonMesh &output);
 # 
-#       /** \brief Create the surface. 
+#       /** \brief Create the Surface.
 #         *
 #         * The 1st step is filling the padding, so that all the cells in the padding
 #         * area are in the hash map. The 2nd step is store the vector, and projected
-#         * point. The 3rd step is finding all the edges intersects the surface, and
-#         * creating surface.
+#         * point. The 3rd step is finding all the edges intersects the Surface, and
+#         * creating Surface.
 #         *
-#         * \param[out] points the resultant points lying on the surface
+#         * \param[out] points the resultant points lying on the Surface
 #         * \param[out] polygons the resultant polygons, as a set of vertices. The Vertices structure contains an array of point indices.
 #         */
 #       void 
@@ -1346,14 +1346,14 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       /** \brief Given the index of a cell, exam it's up, left, front edges, and add
 #         * the vectices to m_surface list.the up, left, front edges only share 4
 #         * points, we first get the vectors at these 4 points and exam whether those
-#         * three edges are intersected by the surface \param index the input index
+#         * three edges are intersected by the Surface \param index the input index
 #         * \param pt_union_indices the union of input data points within the cell and padding cells
 #         */
 #       void 
 #       createSurfaceForCell (const Eigen::Vector3i &index, std::vector <int> &pt_union_indices);
 # 
 # 
-#       /** \brief Given the coordinates of one point, project it onto the surface, 
+#       /** \brief Given the coordinates of one point, project it onto the Surface,
 #         * return the projected point. Do a binary search between p and p+projection_distance 
 #         * to find the projected point
 #         * \param p the coordinates of the input point
@@ -1363,7 +1363,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       void
 #       getProjection (const Eigen::Vector4f &p, std::vector<int> &pt_union_indices, Eigen::Vector4f &projection);
 # 
-#       /** \brief Given the coordinates of one point, project it onto the surface,
+#       /** \brief Given the coordinates of one point, project it onto the Surface,
 #         * return the projected point. Find the plane which fits all the points in
 #         *  pt_union_indices, projected p to the plane to get the projected point.
 #         * \param p the coordinates of the input point
@@ -1423,9 +1423,9 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       getD2AtPoint (const Eigen::Vector4f &p, const Eigen::Vector3f &vec, 
 #                     const std::vector <int> &pt_union_indices);
 # 
-#       /** \brief Test whether the edge is intersected by the surface by 
+#       /** \brief Test whether the edge is intersected by the Surface by
 #         * doing the dot product of the vector at two end points. Also test 
-#         * whether the edge is intersected by the maximum surface by examing 
+#         * whether the edge is intersected by the maximum Surface by examing
 #         * the 2nd derivative of the intersection point 
 #         * \param end_pts the two points of the edge
 #         * \param vect_at_end_pts 
@@ -1436,7 +1436,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #                      std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > &vect_at_end_pts, 
 #                      std::vector <int> &pt_union_indices);
 # 
-#       /** \brief Find point where the edge intersects the surface.
+#       /** \brief Find point where the edge intersects the Surface.
 #         * \param level binary search level
 #         * \param end_pts the two end points on the edge
 #         * \param vect_at_end_pts the vectors at the two end points
@@ -1457,7 +1457,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #        *
 #        * When creating the hash table, the pt_on_surface field store the center
 #        * point of the cell.After calling this function, the projection operator will
-#        * project the center point onto the surface, and the pt_on_surface field will
+#        * project the center point onto the Surface, and the pt_on_surface field will
 #        * be updated using the projected point.Also the vect_at_grid_pt field will be
 #        * updated using the vector at the upper left front vertex of the cell.
 #        *
@@ -1473,7 +1473,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       /** \brief Go through all the entries in the hash table and update the cellData. 
 #         * When creating the hash table, the pt_on_surface field store the center point
 #         * of the cell.After calling this function, the projection operator will project the 
-#         * center point onto the surface, and the pt_on_surface field will be updated 
+#         * center point onto the Surface, and the pt_on_surface field will be updated
 #         * using the projected point.Also the vect_at_grid_pt field will be updated using 
 #         * the vector at the upper left front vertex of the cell. When projecting the point 
 #         * and calculating the vector, using K nearest neighbors instead of using the 
@@ -1514,10 +1514,10 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       /** \brief The point cloud input (XYZ+Normals). */
 #       PointCloudPtr data_;
 # 
-#       /** \brief Store the surface normal(vector) at the each input data point. */
+#       /** \brief Store the Surface normal(vector) at the each input data point. */
 #       std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > vector_at_data_point_;
 #       
-#       /** \brief An array of points which lay on the output surface. */
+#       /** \brief An array of points which lay on the output Surface. */
 #       std::vector<Eigen::Vector4f, Eigen::aligned_allocator<Eigen::Vector4f> > surface_;
 # 
 #       /** \brief Bit map which tells if there is any input data point in the cell. */
@@ -1532,11 +1532,11 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # hash.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/hash.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/hash.h (1.7.2)
 ###
 
 # marching_cubes.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2)
 # 
 # namespace pcl
 # {
@@ -1849,14 +1849,14 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #   };
 # 
 # 
-#   /** \brief The marching cubes surface reconstruction algorithm. This is an abstract class that takes a grid and
+#   /** \brief The marching cubes Surface reconstruction algorithm. This is an abstract class that takes a grid and
 #     * extracts the isosurface as a mesh, based on the original marching cubes paper:
 #     *
-#     * Lorensen W.E., Cline H.E., "Marching cubes: A high resolution 3d surface construction algorithm",
+#     * Lorensen W.E., Cline H.E., "Marching cubes: A high resolution 3d Surface construction algorithm",
 #     * SIGGRAPH '87
 #     *
 #     * \author Alexandru E. Ichim
-#     * \ingroup surface
+#     * \ingroup Surface
 #     */
 #   template <typename PointNT>
 #   class MarchingCubes : public SurfaceReconstruction<PointNT>
@@ -1878,14 +1878,14 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       ~MarchingCubes ();
 # 
 # 
-#       /** \brief Method that sets the iso level of the surface to be extracted.
+#       /** \brief Method that sets the iso level of the Surface to be extracted.
 #         * \param[in] iso_level the iso level.
 #         */
 #       inline void
 #       setIsoLevel (float iso_level)
 #       { iso_level_ = iso_level; }
 # 
-#       /** \brief Method that returns the iso level of the surface to be extracted. */
+#       /** \brief Method that returns the iso level of the Surface to be extracted. */
 #       inline float
 #       getIsoLevel ()
 #       { return iso_level_; }
@@ -1990,13 +1990,13 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       /** \brief Class get name method. */
 #       std::string getClassName () const { return ("MarchingCubes"); }
 # 
-#       /** \brief Extract the surface.
+#       /** \brief Extract the Surface.
 #         * \param[out] output the resultant polygonal mesh
 #         */
 #        void
 #        performReconstruction (pcl::PolygonMesh &output);
 # 
-#        /** \brief Extract the surface.
+#        /** \brief Extract the Surface.
 #          * \param[out] points the points of the extracted mesh
 #          * \param[out] polygons the connectivity between the point of the extracted mesh.
 #          */
@@ -2010,15 +2010,15 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # marching_cubes_hoppe.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2) ?
+# pcl/Surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2) ?
 # namespace pcl
 # {
-#    /** \brief The marching cubes surface reconstruction algorithm, using a signed distance function based on the distance
+#    /** \brief The marching cubes Surface reconstruction algorithm, using a signed distance function based on the distance
 #      * from tangent planes, proposed by Hoppe et. al. in:
 #      * Hoppe H., DeRose T., Duchamp T., MC-Donald J., Stuetzle W., "Surface reconstruction from unorganized points",
 #      * SIGGRAPH '92
 #      * \author Alexandru E. Ichim
-#      * \ingroup surface
+#      * \ingroup Surface
 #      */
 #   template <typename PointNT>
 #   class MarchingCubesHoppe : public MarchingCubes<PointNT>
@@ -2056,7 +2056,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # marching_cubes_poisson.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2)
 # namespace pcl {
 #   namespace poisson {
 # 
@@ -2163,17 +2163,17 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # marching_cubes_rbf.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2) ?
+# pcl/Surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2) ?
 # namespace pcl
 # {
-#   /** \brief The marching cubes surface reconstruction algorithm, using a signed distance function based on radial
+#   /** \brief The marching cubes Surface reconstruction algorithm, using a signed distance function based on radial
 #     * basis functions. Partially based on:
 #     * Carr J.C., Beatson R.K., Cherrie J.B., Mitchell T.J., Fright W.R., McCallum B.C. and Evans T.R.,
 #     * "Reconstruction and representation of 3D objects with radial basis functions"
 #     * SIGGRAPH '01
 #     *
 #     * \author Alexandru E. Ichim
-#     * \ingroup surface
+#     * \ingroup Surface
 #     */
 #   template <typename PointNT>
 #   class MarchingCubesRBF : public MarchingCubes<PointNT>
@@ -2205,14 +2205,14 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       voxelizeData ();
 # 
 # 
-#       /** \brief Set the off-surface points displacement value.
+#       /** \brief Set the off-Surface points displacement value.
 #         * \param[in] epsilon the value
 #         */
 #       inline void
 #       setOffSurfaceDisplacement (float epsilon)
 #       { off_surface_epsilon_ = epsilon; }
 # 
-#       /** \brief Get the off-surface points displacement value. */
+#       /** \brief Get the off-Surface points displacement value. */
 #       inline float
 #       getOffSurfaceDisplacement ()
 #       { return off_surface_epsilon_; }
@@ -2223,7 +2223,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       double
 #       kernel (Eigen::Vector3d c, Eigen::Vector3d x);
 # 
-#       /** \brief The off-surface displacement value. */
+#       /** \brief The off-Surface displacement value. */
 #       float off_surface_epsilon_;
 # 
 #     public:
@@ -2233,7 +2233,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # mls.h
-#cdef extern from "pcl/surface/mls.h" namespace "pcl":
+#cdef extern from "pcl/Surface/mls.h" namespace "pcl":
 #    cdef cppclass MovingLeastSquares[I,O]:
 #        MovingLeastSquares()
 #        void setInputCloud (shared_ptr[cpp.PointCloud[I]])
@@ -2268,7 +2268,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #     * Daniel Cohen-Or, Shachar Fleishman, David Levin and Claudio T. Silva
 #     * www.sci.utah.edu/~shachar/Publications/crpss.pdf
 #     * \author Zoltan Csaba Marton, Radu B. Rusu, Alexandru E. Ichim, Suat Gedikli
-#     * \ingroup surface
+#     * \ingroup Surface
 #     */
 #   template <typename PointInT, typename PointOutT>
 #   class MovingLeastSquares: public CloudSurfaceProcessing<PointInT, PointOutT>
@@ -2351,13 +2351,13 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       inline int 
 #       getPolynomialOrder () { return (order_); }
 # 
-#       /** \brief Sets whether the surface and normal are approximated using a polynomial, or only via tangent estimation.
+#       /** \brief Sets whether the Surface and normal are approximated using a polynomial, or only via tangent estimation.
 #         * \param[in] polynomial_fit set to true for polynomial fit
 #         */
 #       inline void 
 #       setPolynomialFit (bool polynomial_fit) { polynomial_fit_ = polynomial_fit; }
 # 
-#       /** \brief Get the polynomial_fit value (true if the surface and normal are approximated using a polynomial). */
+#       /** \brief Get the polynomial_fit value (true if the Surface and normal are approximated using a polynomial). */
 #       inline bool 
 #       getPolynomialFit () { return (polynomial_fit_); }
 # 
@@ -2395,7 +2395,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #         *                                               parameter
 #         *                    * VOXEL_GRID_DILATION - the input cloud will be inserted into a voxel grid with voxels of
 #         *                                            size \ref voxel_size_; this voxel grid will be dilated \ref dilation_iteration_num_
-#         *                                            times and the resulting points will be projected to the MLS surface
+#         *                                            times and the resulting points will be projected to the MLS Surface
 #         *                                            of the closest point in the input cloud; the result is a point cloud
 #         *                                            with filled holes and a constant point density
 #         */
@@ -2472,8 +2472,8 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       inline int
 #       getDilationIterations () { return dilation_iteration_num_; }
 # 
-#       /** \brief Base method for surface reconstruction for all points given in <setInputCloud (), setIndices ()>
-#         * \param[out] output the resultant reconstructed surface model
+#       /** \brief Base method for Surface reconstruction for all points given in <setInputCloud (), setIndices ()>
+#         * \param[out] output the resultant reconstructed Surface model
 #         */
 #       void 
 #       process (PointCloudOut &output);
@@ -2491,7 +2491,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       /** \brief The order of the polynomial to be fit. */
 #       int order_;
 # 
-#       /** True if the surface and normal be approximated using a polynomial, false if tangent estimation is sufficient. */
+#       /** True if the Surface and normal be approximated using a polynomial, false if tangent estimation is sufficient. */
 #       bool polynomial_fit_;
 # 
 #       /** \brief The nearest neighbors search radius for each point. */
@@ -2636,7 +2636,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #         * \param[in] nn_indices the set of nearest neighbors indices for \ref pt
 #         * \param[in] nn_sqr_dists the set of nearest neighbors squared distances for \ref pt
 #         * \param[out] projected_points the set of points projected points around the query point
-#         * (in the case of upsampling method NONE, only the query point projected to its own fitted surface will be returned,
+#         * (in the case of upsampling method NONE, only the query point projected to its own fitted Surface will be returned,
 #         * in the case of the other upsampling methods, multiple points will be returned)
 #         * \param[out] projected_points_normals the normals corresponding to the projected points
 #         */
@@ -2649,15 +2649,15 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #                              NormalCloud &projected_points_normals);
 # 
 #       /** \brief Fits a point (sample point) given in the local plane coordinates of an input point (query point) to
-#         * the MLS surface of the input point
+#         * the MLS Surface of the input point
 #         * \param[in] u_disp the u coordinate of the sample point in the local plane of the query point
 #         * \param[in] v_disp the v coordinate of the sample point in the local plane of the query point
 #         * \param[in] u the axis corresponding to the u-coordinates of the local plane of the query point
 #         * \param[in] v the axis corresponding to the v-coordinates of the local plane of the query point
 #         * \param[in] plane_normal the normal to the local plane of the query point
-#         * \param[in] curvature the curvature of the surface at the query point
+#         * \param[in] curvature the curvature of the Surface at the query point
 #         * \param[in] query_point the absolute 3D position of the query point
-#         * \param[in] c_vec the coefficients of the polynomial fit on the MLS surface of the query point
+#         * \param[in] c_vec the coefficients of the polynomial fit on the MLS Surface of the query point
 #         * \param[in] num_neighbors the number of neighbors of the query point in the input cloud
 #         * \param[out] result_point the absolute 3D position of the resulting projected point
 #         * \param[out] result_normal the normal of the resulting projected point
@@ -2683,7 +2683,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #   /** \brief MovingLeastSquaresOMP represent an OpenMP implementation of the MLS (Moving Least Squares) algorithm for 
 #     * data smoothing and improved normal estimation.
 #     * \author Radu B. Rusu
-#     * \ingroup surface
+#     * \ingroup Surface
 #     */
 #   template <typename PointInT, typename PointOutT>
 #   class MovingLeastSquaresOMP : public MovingLeastSquares<PointInT, PointOutT>
@@ -2737,7 +2737,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # multi_grid_octree_data.h
-# pcl/surface/3rdparty/poisson4/multi_grid_octree_data.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/multi_grid_octree_data.h (1.7.2)
 # namespace pcl 
 # {
 #   namespace poisson 
@@ -3213,7 +3213,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # octree_poisson.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/octree_poisson.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/octree_poisson.h (1.7.2)
 # namespace pcl 
 # {
 #   namespace poisson 
@@ -3486,12 +3486,12 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 # namespace pcl
 # {
 # 
-#   /** \brief Simple triangulation/surface reconstruction for organized point
+#   /** \brief Simple triangulation/Surface reconstruction for organized point
 #     * clouds. Neighboring points (pixels in image space) are connected to
 #     * construct a triangular mesh.
 #     *
 #     * \author Dirk Holz, Radu B. Rusu
-#     * \ingroup surface
+#     * \ingroup Surface
 #     */
 #   template <typename PointInT>
 #   class OrganizedFastMesh : public MeshConstruction<PointInT>
@@ -3585,13 +3585,13 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       void
 #       reconstructPolygons (std::vector<pcl::Vertices>& polygons);
 # 
-#       /** \brief Create the surface.
+#       /** \brief Create the Surface.
 #         * \param[out] polygons the resultant polygons, as a set of vertices. The Vertices structure contains an array of point indices.
 #         */
 #       virtual void
 #       performReconstruction (std::vector<pcl::Vertices> &polygons);
 # 
-#       /** \brief Create the surface.
+#       /** \brief Create the Surface.
 #         *
 #         * Simply uses image indices to create an initial polygonal mesh for organized point clouds.
 #         * \a indices_ are ignored!
@@ -3764,13 +3764,13 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 # poisson.h
 # namespace pcl
 # {
-#   /** \brief The Poisson surface reconstruction algorithm.
+#   /** \brief The Poisson Surface reconstruction algorithm.
 #     * \note Code adapted from Misha Kazhdan: http://www.cs.jhu.edu/~misha/Code/PoissonRecon/
 #     * \note Based on the paper:
-#     *       * Michael Kazhdan, Matthew Bolitho, Hugues Hoppe, "Poisson surface reconstruction",
+#     *       * Michael Kazhdan, Matthew Bolitho, Hugues Hoppe, "Poisson Surface reconstruction",
 #     *         SGP '06 Proceedings of the fourth Eurographics symposium on Geometry processing
 #     * \author Alexandru-Eugen Ichim
-#     * \ingroup surface
+#     * \ingroup Surface
 #     */
 #   template<typename PointNT>
 #   class Poisson : public SurfaceReconstruction<PointNT>
@@ -3790,13 +3790,13 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       /** \brief Destructor. */
 #       ~Poisson ();
 # 
-#       /** \brief Create the surface.
+#       /** \brief Create the Surface.
 #         * \param[out] output the resultant polygonal mesh
 #         */
 #       void
 #       performReconstruction (pcl::PolygonMesh &output);
 # 
-#       /** \brief Create the surface.
+#       /** \brief Create the Surface.
 #         * \param[out] points the vertex positions of the resulting mesh
 #         * \param[out] polygons the connectivity of the resulting mesh
 #         */
@@ -3840,7 +3840,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       getOutputPolygons () { return output_polygons_; }
 # 
 # 
-#       /** \brief Set the maximum depth of the tree that will be used for surface reconstruction.
+#       /** \brief Set the maximum depth of the tree that will be used for Surface reconstruction.
 #         * \note Running at depth d corresponds to solving on a voxel grid whose resolution is no larger than
 #         * 2^d x 2^d x 2^d. Note that since the reconstructor adapts the octree to the sampling density, the specified
 #         * reconstruction depth is only an upper bound.
@@ -3866,7 +3866,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       inline int
 #       getSolverDivide () { return solver_divide_; }
 # 
-#       /** \brief Set the depth at which a block iso-surface extractor should be used to extract the iso-surface
+#       /** \brief Set the depth at which a block iso-Surface extractor should be used to extract the iso-Surface
 #         * \note Using this parameter helps reduce the memory overhead at the cost of a small increase in extraction
 #         * time. (In practice, we have found that for reconstructions of depth 9 or higher a subdivide depth of 7 or 8
 #         * can greatly reduce the memory usage.)
@@ -3875,7 +3875,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #       inline void
 #       setIsoDivide (int iso_divide) { iso_divide_ = iso_divide; }
 # 
-#       /** \brief Get the depth at which a block iso-surface extractor should be used to extract the iso-surface */
+#       /** \brief Get the depth at which a block iso-Surface extractor should be used to extract the iso-Surface */
 #       inline int
 #       getIsoDivide () { return iso_divide_; }
 # 
@@ -3955,7 +3955,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # polynomial.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/polynomial.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/polynomial.h (1.7.2)
 # namespace pcl
 # namespace poisson
 # template<int Degree>
@@ -4017,7 +4017,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # ppolynomial.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/ppolynomial.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/ppolynomial.h (1.7.2)
 # namespace pcl
 # {
 #   namespace poisson
@@ -4147,7 +4147,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 # simplification_remove_unused_vertices.h
 # namespace pcl
 # {
-#   namespace surface
+#   namespace Surface
 #   {
 #     class PCL_EXPORTS SimplificationRemoveUnusedVertices
 #     {
@@ -4181,7 +4181,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # sparse_matrix.h
-# pcl/surface/3rdparty/poisson4/sparse_matrix.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/sparse_matrix.h (1.7.2)
 # 
 # namespace pcl 
 # namespace poisson 
@@ -4435,7 +4435,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #   
 #   /** \brief The texture mapping algorithm
 #     * \author Khai Tran, Raphael Favier
-#     * \ingroup surface
+#     * \ingroup Surface
 #     */
 #   template<typename PointInT>
 #   class TextureMapping
@@ -4741,7 +4741,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # vector.h (1.6.0)
-# pcl/surface/3rdparty/poisson4/vector.h (1.7.2)
+# pcl/Surface/3rdparty/poisson4/vector.h (1.7.2)
 # namespace pcl {
 # namespace poisson {
 # 
@@ -4854,15 +4854,15 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # vtk.h (1.6.0)
-# pcl\surface\vtk_smoothing\vtk_smoothing.h (1.7.2)
+# pcl\Surface\vtk_smoothing\vtk_smoothing.h (1.7.2)
 # #include <vtkPolyData.h>
 # #include <vtkSmartPointer.h>
 ###
 
-# pcl\surface\vtk_smoothing\vtk_mesh_quadric_decimation.h (1.7.2)
+# pcl\Surface\vtk_smoothing\vtk_mesh_quadric_decimation.h (1.7.2)
 
 # vtk_mesh_smoothing_laplacian.h (1.6.0)
-# pcl\surface\vtk_smoothing\vtk_mesh_smoothing_laplacian.h (1.7.2)
+# pcl\Surface\vtk_smoothing\vtk_mesh_smoothing_laplacian.h (1.7.2)
 # namespace pcl
 # {
 #   /** \brief PCL mesh smoothing based on the vtkSmoothPolyDataFilter algorithm from the VTK library.
@@ -5020,7 +5020,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # vtk_mesh_smoothing_windowed_sinc.h (1.6.0)
-# pcl\surface\vtk_smoothing\vtk_mesh_smoothing_windowed_sinc.h (1.7.2)
+# pcl\Surface\vtk_smoothing\vtk_mesh_smoothing_windowed_sinc.h (1.7.2)
 # namespace pcl
 # /** \brief PCL mesh smoothing based on the vtkWindowedSincPolyDataFilter algorithm from the VTK library.
 #   * Please check out the original documentation for more details on the inner workings of the algorithm
@@ -5084,7 +5084,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # vtk_mesh_subdivision.h (1.6.0)
-# pcl\surface\vtk_smoothing\vtk_mesh_subdivision.h (1.7.2)
+# pcl\Surface\vtk_smoothing\vtk_mesh_subdivision.h (1.7.2)
 # namespace pcl
 # /** \brief PCL mesh smoothing based on the vtkLinearSubdivisionFilter, vtkLoopSubdivisionFilter, vtkButterflySubdivisionFilter
 #   * depending on the selected MeshSubdivisionVTKFilterType algorithm from the VTK library.
@@ -5108,7 +5108,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # vtk_utils.h (1.6.0)
-# pcl\surface\vtk_smoothing\vtk_utils.h (1.7.2)
+# pcl\Surface\vtk_smoothing\vtk_utils.h (1.7.2)
 # namespace pcl
 # class PCL_EXPORTS VTKUtils
 #       public:
