@@ -29,8 +29,8 @@ class objreader():
         # These are not necessarily of the same length.
         self._v = []
         self._origin = [(0.0, 0.0, 0.0)]
-        self.vv = [[0.0, 0.0, 0.0]]
-        self.ff = [[0]]
+        self.vv = []
+        self.ff = []
         self._vn = []
         self._vt = []
         #vertex slice map - <vertex no> <prev vertex> <next vertex>
