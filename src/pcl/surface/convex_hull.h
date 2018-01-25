@@ -172,6 +172,12 @@ namespace pcl
         return (dimension_);
       }
 
+	  inline double 
+		  getPerimeter() const
+	  {
+		  return (perimeter_);
+	  }
+
       /** \brief Retrieve the indices of the input point cloud that for the convex hull.
         *
         * \note Should only be called after reconstruction was performed.
@@ -262,7 +268,7 @@ namespace pcl
       double total_area_;
 
 	  /*of the largest 2D covering the 2D convex hull*/
-	  double perimeter; 
+	  double perimeter_; 
 
       /* \brief The volume of the convex hull (only for 3D hulls, zero for 2D). */
       double total_volume_;

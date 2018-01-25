@@ -118,6 +118,9 @@ void pcl::ConvexHull<PointInT>::computerVolumeArea(const qhull_type &hull, doubl
 		tot_area += area;
 		tot_vol += vol;
 	}
+
+	vol = tot_vol;
+	area = tot_area;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -339,7 +342,7 @@ pcl::ConvexHull<PointInT>::performReconstruction2D(PointCloud &hull, std::vector
 			if (sqr_cir_radius < tmp)
 				sqr_cir_radius = tmp;
 		}
-		perimeter = 2 * M_PI * sqrt(sqr_cir_radius);
+		perimeter_ = 2 * M_PI * sqrt(sqr_cir_radius);
 	}
 
 	polygons.resize(1);
