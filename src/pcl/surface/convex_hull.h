@@ -85,7 +85,7 @@ namespace pcl
 	  typedef std::valarray<qhull_value_type>					qhull_point_type;
 	  typedef std::vector<qhull_point_type>						qhull_points_type;
 	  typedef typename qhull_points_type::iterator				qhull_points_iterator_type;
-	  typedef typename quick_hull<qhull_points_iterator_type >	qhull_type;
+	  typedef quick_hull<qhull_points_iterator_type >	qhull_type;
 
     public:
       typedef std::shared_ptr<ConvexHull<PointInT> > Ptr;
