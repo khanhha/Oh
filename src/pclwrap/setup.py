@@ -31,16 +31,16 @@ if os.name == 'nt':
     print('platform: nt')
     icl_dirs.append('..//..//3rdParty//msvc14//Qhull//include')
 elif os.name == 'posix':
-    icl_dirs.append('..//..//3rdParty//gcc//Qhull//include')
+    icl_dirs.append('..//..//3rdParty//gcc//QHull//include')
 else:
     print('not support platform!')
     exit(1)
 
 lib_dirs = []
 if os.name == 'nt':
-    lib_dirs.append('..//..//3rdParty//msvc14//Qhull//lib')
+    lib_dirs.append('..//..//3rdParty//msvc14//QHull//lib')
 elif os.name == 'posix':
-    lib_dirs.append('..//..//3rdParty//gcc//Qhull//lib')
+    lib_dirs.append('..//..//3rdParty//gcc//QHull//lib')
 else:
     print('not support platform!')
     exit(1)
