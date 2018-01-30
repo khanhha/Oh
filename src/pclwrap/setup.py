@@ -24,9 +24,32 @@ for root, dirs, files in os.walk("..//..//src"):
 
 source_files.insert(0, '_pcl.pyx')
 
+
+icl_dirs = ['..//..//src', '..//..//3rdParty//eigen', '..//..//3rdParty']
+icl_dirs.append(numpy.get_include())
+if os.name == 'nt':
+    print('platform: nt')
+    icl_dirs.append('..//..//3rdParty//msvc14//Qhull//include')
+elif os.name == 'posix':
+    icl_dirs.append('..//..//3rdParty//gcc//Qhull//include')
+else:
+    print('not support platform!')
+    exit(1)
+
+lib_dirs = []
+if os.name == 'nt':
+    lib_dirs.append('..//..//3rdParty//msvc14//Qhull//lib')
+elif os.name == 'posix':
+    lib_dirs.append('..//..//3rdParty//gcc//Qhull//lib')
+else:
+    print('not support platform!')
+    exit(1)
+
 module = Extension('pcl._pcl',
                 sources = source_files,
-                include_dirs= ['..//..//src', '..//..//3rdParty//eigen', '..//..//3rdParty', numpy.get_include()],
+                include_dirs =  icl_dirs,
+                library_dirs = lib_dirs,
+                libraries = ['qhullstatic'],
                 extra_compile_args=compile_args,
                 language='c++')
 

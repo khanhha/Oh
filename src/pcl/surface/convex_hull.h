@@ -47,10 +47,7 @@
 #include <pcl/surface/reconstruction.h>
 #include <pcl/ModelCoefficients.h>
 #include <pcl/PolygonMesh.h>
-#include <pcl/surface/quickhull.hpp>
-#include <valarray>
-#include <set>
-#include <Eigen/Dense>
+#include <memory>
 
 namespace pcl
 {
@@ -60,7 +57,7 @@ namespace pcl
     * \ingroup surface
     */
   inline bool
-  comparePoints2D (const std::pair<int, Eigen::Vector2f> & p1, const std::pair<int, Eigen::Vector2f> & p2)
+  comparePoints2D (const std::pair<int, Eigen::Vector4f> & p1, const std::pair<int, Eigen::Vector4f> & p2)
   {
     double angle1 = atan2 (p1.second[1], p1.second[0]) + M_PI;
     double angle2 = atan2 (p2.second[1], p2.second[0]) + M_PI;
@@ -81,12 +78,6 @@ namespace pcl
       using PCLBase<PointInT>::initCompute;
       using PCLBase<PointInT>::deinitCompute;
 
-	  typedef double											qhull_value_type;
-	  typedef std::valarray<qhull_value_type>					qhull_point_type;
-	  typedef std::vector<qhull_point_type>						qhull_points_type;
-	  typedef typename qhull_points_type::iterator				qhull_points_iterator_type;
-	  typedef quick_hull<qhull_points_iterator_type >	qhull_type;
-
     public:
       typedef std::shared_ptr<ConvexHull<PointInT> > Ptr;
       typedef std::shared_ptr<const ConvexHull<PointInT> > ConstPtr;
@@ -99,7 +90,7 @@ namespace pcl
 
       /** \brief Empty constructor. */
       ConvexHull () : compute_area_ (false), total_area_ (0), total_volume_ (0), dimension_ (0), 
-                      projection_angle_thresh_ (cos (0.174532925) ),
+                      projection_angle_thresh_ (cos (0.174532925) ), qhull_flags ("qhull "),
                       x_axis_ (1.0, 0.0, 0.0), y_axis_ (0.0, 1.0, 0.0), z_axis_ (0.0, 0.0, 1.0)
       {
       };
@@ -135,6 +126,10 @@ namespace pcl
       setComputeAreaVolume (bool value)
       {
         compute_area_ = value;
+        if (compute_area_)
+          qhull_flags = std::string ("qhull FA");
+        else
+          qhull_flags = std::string ("qhull ");
       }
 
       /** \brief Returns the total area of the convex hull. */
@@ -172,10 +167,17 @@ namespace pcl
         return (dimension_);
       }
 
-	  inline double 
+	  inline double
 		  getPerimeter() const
 	  {
 		  return (perimeter_);
+	  }
+
+	  /*for 2D convex hull*/
+	  inline int
+		  getProjectionDimension() const
+	  {
+		  return projection_dim_;
 	  }
 
       /** \brief Retrieve the indices of the input point cloud that for the convex hull.
@@ -186,10 +188,7 @@ namespace pcl
       void
       getHullPointIndices (pcl::PointIndices &hull_point_indices) const;
 
-	public:
-	  std::vector<Eigen::Vector3f> test_segments;
-
-	protected:
+    protected:
       /** \brief The actual reconstruction method. 
         * 
         * \param[out] points the resultant points lying on the convex hull 
@@ -251,24 +250,11 @@ namespace pcl
         return ("ConvexHull");
       }
 
-	  float 
-		  computeConvexHull2DArea(const std::vector<std::pair<int, Eigen::Vector2f>> &hull) const;
-
-	  void 
-		  computerVolumeArea(const qhull_type &hull, double &vol, double &area) const;
-
-	  Vector3f
-		  toVector3f(const qhull_point_type &point) const;
-
-
       /* \brief True if we should compute the area and volume of the convex hull. */
       bool compute_area_;
 
       /* \brief The area of the convex hull. */
       double total_area_;
-
-	  /*of the largest 2D covering the 2D convex hull*/
-	  double perimeter_; 
 
       /* \brief The volume of the convex hull (only for 3D hulls, zero for 2D). */
       double total_volume_;
@@ -278,6 +264,13 @@ namespace pcl
 
       /** \brief How close can a 2D plane's normal be to an axis to make projection problematic. */
       double projection_angle_thresh_;
+
+	  int projection_dim_;
+
+	  double perimeter_;
+
+      /** \brief Option flag string to be used calling qhull. */
+      std::string qhull_flags;
 
       /* \brief x-axis - for checking valid projections. */
       const Eigen::Vector3d x_axis_;
@@ -294,8 +287,6 @@ namespace pcl
       public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   };
-
-
 }
 
 //#ifdef PCL_NO_PRECOMPILE

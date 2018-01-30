@@ -388,6 +388,7 @@ void test_convex_hull()
 	std::cout << chull_builder.getTotalArea() << std::endl;
 	std::cout << chull_builder.getTotalVolume() << std::endl;
 
+#if 0
 	auto cloud_actor = vtk_build_points_actor(cloud->points, Vector3f(1.0f, 1.0f, 1.0f), 1.0f);
 	auto sample_actor = vtk_build_points_actor(out_hull->points, Vector3f(1.0f, 0.0f, 0.0f), 4.0f);
 	auto segment_actor = vtk_build_segments_actor(chull_builder.test_segments, Vector3f(1.0f, 1.0f, 0.0f), 1.0f);
@@ -395,6 +396,7 @@ void test_convex_hull()
 	g_ren1->AddActor(cloud_actor);
 	g_ren1->AddActor(sample_actor);
 	g_ren1->AddActor(segment_actor);
+#endif
 }
 
 int main()

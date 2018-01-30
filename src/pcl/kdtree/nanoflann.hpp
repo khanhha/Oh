@@ -2180,7 +2180,7 @@ namespace nanoflann
 			if (n <= 1)
 				return 1.0;
 
-			ElementType avg_nm[3] = { 0.,0.,0. }, tmp[3];
+			ElementType avg_nm[3] = { 0.,0.,0. }, tmp[3] = {0.0,0.0,0.0 };
 			for (IndexType k = left + 1; k < right; ++k) {
 				dataset_get_nm(this->vind[k], tmp[0], tmp[1], tmp[2]);
 				v3v3_add(avg_nm, tmp);

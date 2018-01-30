@@ -25,7 +25,7 @@ from shared_ptr cimport shared_ptr
 # 
 # template <typename PointInT>
 # class PCLSurfaceBase: public PCLBase<PointInT>
-cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
+cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
     cdef cppclass PCLSurfaceBase[In](cpp.PCLBase[In]):
         PCLSurfaceBase()
         
@@ -63,7 +63,7 @@ cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
 #   */
 # template <typename PointInT>
 # class SurfaceReconstruction: public PCLSurfaceBase<PointInT>
-cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
+cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
     cdef cppclass SurfaceReconstruction[In](PCLSurfaceBase[In]):
         SurfaceReconstruction()
 #       public:
@@ -119,7 +119,7 @@ cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
 # 
 # template <typename PointInT>
 # class MeshConstruction: public PCLSurfaceBase<PointInT>
-cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
+cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
     cdef cppclass MeshConstruction[In](PCLSurfaceBase[In]):
         MeshConstruction()
         # public:
@@ -168,7 +168,7 @@ cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
 # 
 # template <typename PointInT, typename PointOutT>
 # class CloudSurfaceProcessing : public PCLBase<PointInT>
-#cdef extern from "pcl/Surface/processing.h" namespace "pcl":
+#cdef extern from "pcl/surface/processing.h" namespace "pcl":
 #    cdef cppclass CloudSurfaceProcessing[In, Out](cpp.PCLBase[In]):
 #        CloudSurfaceProcessing()
 #       public:
@@ -217,11 +217,11 @@ cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
 
 
 # (1.6.0)allocator.h
-# (1.7.2) -> pcl/Surface/3rdparty/poisson4
+# (1.7.2) -> pcl/surface/3rdparty/poisson4
 # namespace pcl 
 # namespace poisson 
 # class AllocatorState
-# cdef extern from "pcl/Surface/3rdparty/poisson4/allocator.h" namespace "pcl::poisson":
+# cdef extern from "pcl/surface/3rdparty/poisson4/allocator.h" namespace "pcl::poisson":
 #     cdef cppclass AllocatorState:
 #         AllocatorState()
 #         # public:
@@ -232,7 +232,7 @@ cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
 # (1.7.2) -> pcl\Surface\3rdparty\poisson4 ?
 # template<class T>
 # class Allocator
-# cdef extern from "pcl/Surface/3rdparty/poisson4/allocator.h" namespace "pcl::poisson":
+# cdef extern from "pcl/surface/3rdparty/poisson4/allocator.h" namespace "pcl::poisson":
 #     cdef cppclass Allocator[T]:
 #         Allocator()
         # int blockSize;
@@ -279,7 +279,7 @@ cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
 #   */
 # template <typename PointInT, typename PointOutT>
 # class BilateralUpsampling: public CloudSurfaceProcessing<PointInT, PointOutT>
-#cdef extern from "pcl/Surface/bilateral_upsampling.h" namespace "pcl":
+#cdef extern from "pcl/surface/bilateral_upsampling.h" namespace "pcl":
 #    cdef cppclass BilateralUpsampling[In, Out](CloudSurfaceProcessing[In, Out]):
 #        BilateralUpsampling()
         # public:
@@ -323,12 +323,12 @@ cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
 ###
 
 # binary_node.h (1.6.0)
-# pcl/Surface/3rdparty\poisson4\binary_node.h (1.7.2)
+# pcl/surface/3rdparty\poisson4\binary_node.h (1.7.2)
 # namespace pcl
 # namespace poisson
 # template<class Real>
 # class BinaryNode
-# cdef extern from "pcl/Surface/3rdparty/poisson4/binary_node.h" namespace "pcl::poisson":
+# cdef extern from "pcl/surface/3rdparty/poisson4/binary_node.h" namespace "pcl::poisson":
 #    cdef cppclass BinaryNode[Real]:
 #        BinaryNode()
         # public:
@@ -359,7 +359,7 @@ cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
 # namespace pcl
 # template<typename PointInT>
 # class ConcaveHull : public MeshConstruction<PointInT>
-#cdef extern from "pcl/Surface/concave_hull.h" namespace "pcl":
+#cdef extern from "pcl/surface/concave_hull.h" namespace "pcl":
 #    cdef cppclass ConcaveHull[In](MeshConstruction[In]):
 #        ConcaveHull()
         # public:
@@ -446,7 +446,7 @@ cdef extern from "pcl/Surface/reconstruction.h" namespace "pcl":
 # 
 # template<typename PointInT>
 # class ConvexHull : public MeshConstruction<PointInT>
-cdef extern from "pcl/Surface/convex_hull.h" namespace "pcl":
+cdef extern from "pcl/surface/convex_hull.h" namespace "pcl":
     cdef cppclass ConvexHull[In](MeshConstruction[In]):
         ConvexHull()
         # protected:
@@ -481,8 +481,9 @@ cdef extern from "pcl/Surface/convex_hull.h" namespace "pcl":
         double getTotalArea () const
         # /** \brief Returns the total volume of the convex hull. Only valid for 3-dimensional sets.
         #   *  For 2D-sets volume is zero.
-
         double getPerimeter() const
+
+        int getProjectionDimension() const
 
         double getTotalVolume () const
         # /** \brief Sets the dimension on the input data, 2D or 3D.
@@ -634,7 +635,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # factor.h(1.6.0)
-# pcl/Surface/3rdparty/poisson4/factor.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/factor.h (1.7.2)
 # namespace pcl
 # namespace poisson
 # 
@@ -655,12 +656,12 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # function_data.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/function_data.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/function_data.h (1.7.2)
 # namespace pcl 
 # namespace poisson 
 # template<int Degree,class Real>
 # class FunctionData
-# cdef extern from "pcl/Surface/function_data.h" namespace "pcl::poisson":
+# cdef extern from "pcl/surface/function_data.h" namespace "pcl::poisson":
 #     cdef cppclass FunctionData:
 #         FunctionData()
 #         int useDotRatios;
@@ -694,7 +695,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # geometry.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/geometry.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/geometry.h (1.7.2)
 # namespace pcl
 # namespace poisson 
 #   {
@@ -973,7 +974,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 #   */
 # template <typename PointInT>
 # class GreedyProjectionTriangulation : public MeshConstruction<PointInT>
-#cdef extern from "pcl/Surface/gp3.h" namespace "pcl::poisson":
+#cdef extern from "pcl/surface/gp3.h" namespace "pcl::poisson":
 #    cdef cppclass GreedyProjectionTriangulation[In](MeshConstruction[In]):
 #        GreedyProjectionTriangulation()
 #       public:
@@ -1532,11 +1533,11 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # hash.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/hash.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/hash.h (1.7.2)
 ###
 
 # marching_cubes.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2)
 # 
 # namespace pcl
 # {
@@ -2010,7 +2011,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # marching_cubes_hoppe.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2) ?
+# pcl/surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2) ?
 # namespace pcl
 # {
 #    /** \brief The marching cubes Surface reconstruction algorithm, using a signed distance function based on the distance
@@ -2056,7 +2057,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # marching_cubes_poisson.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2)
 # namespace pcl {
 #   namespace poisson {
 # 
@@ -2163,7 +2164,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # marching_cubes_rbf.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2) ?
+# pcl/surface/3rdparty/poisson4/marching_cubes_poisson.h (1.7.2) ?
 # namespace pcl
 # {
 #   /** \brief The marching cubes Surface reconstruction algorithm, using a signed distance function based on radial
@@ -2233,7 +2234,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # mls.h
-#cdef extern from "pcl/Surface/mls.h" namespace "pcl":
+#cdef extern from "pcl/surface/mls.h" namespace "pcl":
 #    cdef cppclass MovingLeastSquares[I,O]:
 #        MovingLeastSquares()
 #        void setInputCloud (shared_ptr[cpp.PointCloud[I]])
@@ -2737,7 +2738,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # multi_grid_octree_data.h
-# pcl/Surface/3rdparty/poisson4/multi_grid_octree_data.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/multi_grid_octree_data.h (1.7.2)
 # namespace pcl 
 # {
 #   namespace poisson 
@@ -3213,7 +3214,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # octree_poisson.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/octree_poisson.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/octree_poisson.h (1.7.2)
 # namespace pcl 
 # {
 #   namespace poisson 
@@ -3955,7 +3956,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # polynomial.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/polynomial.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/polynomial.h (1.7.2)
 # namespace pcl
 # namespace poisson
 # template<int Degree>
@@ -4017,7 +4018,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # ppolynomial.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/ppolynomial.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/ppolynomial.h (1.7.2)
 # namespace pcl
 # {
 #   namespace poisson
@@ -4181,7 +4182,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # sparse_matrix.h
-# pcl/Surface/3rdparty/poisson4/sparse_matrix.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/sparse_matrix.h (1.7.2)
 # 
 # namespace pcl 
 # namespace poisson 
@@ -4741,7 +4742,7 @@ ctypedef ConvexHull[cpp.PointXYZRGBA] ConvexHull_PointXYZRGBA_t
 ###
 
 # vector.h (1.6.0)
-# pcl/Surface/3rdparty/poisson4/vector.h (1.7.2)
+# pcl/surface/3rdparty/poisson4/vector.h (1.7.2)
 # namespace pcl {
 # namespace poisson {
 # 

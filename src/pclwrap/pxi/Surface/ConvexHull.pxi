@@ -35,6 +35,9 @@ cdef class ConvexHull:
     def get_perimeter(self):
         return self.me.getPerimeter()
 
+    def get_projection_dimension(self):
+        return self.me.getProjectionDimension()
+
     def get_total_volume (self):
         return self.me.getTotalVolume()
 
