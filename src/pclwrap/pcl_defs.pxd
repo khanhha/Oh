@@ -564,18 +564,18 @@ ctypedef shared_ptr[PCLBase[PointXYZRGBA]] PCLBase_PointXYZRGBA_Ptr_t
 # Vertices.h
 # namespace pcl
 # struct Vertices
-# cdef extern from "pcl/Vertices.h" namespace "pcl":
-#     cdef cppclass Vertices:
-#         Vertices()
-#         vector[size_t] vertices;
-#         # ostream& element "operator()"(ostream s, Vertices v)
-#         # public:
-#         # ctypedef shared_ptr[Vertices] Ptr
-#         # ctypedef shared_ptr[Vertices const] ConstPtr
-#
-#
-# # ctypedef Vertices Vertices_t
-# ctypedef shared_ptr[Vertices] VerticesPtr_t
+cdef extern from "pcl/Vertices.h" namespace "pcl":
+    cdef cppclass Vertices:
+        Vertices()
+        vector[size_t] vertices;
+        # ostream& element "operator()"(ostream s, Vertices v)
+        # public:
+        # ctypedef shared_ptr[Vertices] Ptr
+        # ctypedef shared_ptr[Vertices const] ConstPtr
+
+
+# ctypedef Vertices Vertices_t
+ctypedef shared_ptr[Vertices] VerticesPtr_t
 # ctypedef shared_ptr[Vertices const] VerticesConstPtr
 # inline std::ostream& operator<<(std::ostream& s, const  ::pcl::Vertices & v)
 ###

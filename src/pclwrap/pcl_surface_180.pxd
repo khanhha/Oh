@@ -359,9 +359,9 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
 # namespace pcl
 # template<typename PointInT>
 # class ConcaveHull : public MeshConstruction<PointInT>
-#cdef extern from "pcl/surface/concave_hull.h" namespace "pcl":
-#    cdef cppclass ConcaveHull[In](MeshConstruction[In]):
-#        ConcaveHull()
+cdef extern from "pcl/surface/concave_hull.h" namespace "pcl":
+    cdef cppclass ConcaveHull[In](MeshConstruction[In]):
+        ConcaveHull()
         # public:
         # \brief Compute a concave hull for all points given 
         # \param points the resultant points lying on the concave hull 
@@ -372,20 +372,19 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
         # /** \brief Compute a concave hull for all points given 
         #  * \param output the resultant concave hull vertices
         # void reconstruct (PointCloud &output);
-        # void reconstruct (cpp.PointCloud_t output)
-        # void reconstruct (cpp.PointCloud_PointXYZI_t output)
-        # void reconstruct (cpp.PointCloud_PointXYZRGB_t output)
-        # void reconstruct (cpp.PointCloud_PointXYZRGBA_t output)
+        void reconstruct (cpp.PointCloud_t output)
+        void reconstruct (cpp.PointCloud_t output, vector[cpp.Vertices])
+        void reconstruct (cpp.PointCloud_PointXYZI_t output)
+        void reconstruct (cpp.PointCloud_PointXYZRGB_t output)
+        void reconstruct (cpp.PointCloud_PointXYZRGBA_t output)
         
         # /** \brief Set the alpha value, which limits the size of the resultant
         #   * hull segments (the smaller the more detailed the hull).  
         #   * \param alpha positive, non-zero value, defining the maximum length
         #   * from a vertex to the facet center (center of the voronoi cell).
-        # inline void setAlpha (double alpha)
-        # void setAlpha (double alpha)
+        inline void setAlpha (double alpha)
         # Returns the alpha parameter, see setAlpha().
-        # inline double getAlpha ()
-        # double getAlpha ()
+        inline double getAlpha ()
         
         # If set, the voronoi cells center will be saved in _voronoi_centers_
         # voronoi_centers
@@ -394,15 +393,14 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
         # \brief If keep_information_is set to true the convex hull
         # points keep other information like rgb, normals, ...
         # \param value where to keep the information or not, default is false
-        # void setKeepInformation (bool value)
+        void setKeepInformation (bool value)
         
         # brief Returns the dimensionality (2 or 3) of the calculated hull.
-        # inline int getDim () const
         # brief Returns the dimensionality (2 or 3) of the calculated hull.
-        # inline int getDimension () const
+        inline int getDimension () const
         # brief Sets the dimension on the input data, 2D or 3D.
         # param[in] dimension The dimension of the input data.  If not set, this will be determined automatically.
-        # void setDimension (int dimension)
+        void setDimension (int dimension)
         
         # protected:
         # /** \brief The actual reconstruction method.
@@ -427,10 +425,10 @@ cdef extern from "pcl/surface/reconstruction.h" namespace "pcl":
         
 
 
-#ctypedef ConcaveHull[cpp.PointXYZ] ConcaveHull_t
-#ctypedef ConcaveHull[cpp.PointXYZI] ConcaveHull_PointXYZI_t
-#ctypedef ConcaveHull[cpp.PointXYZRGB] ConcaveHull_PointXYZRGB_t
-#ctypedef ConcaveHull[cpp.PointXYZRGBA] ConcaveHull_PointXYZRGBA_t
+ctypedef ConcaveHull[cpp.PointXYZ] ConcaveHull_t
+ctypedef ConcaveHull[cpp.PointXYZI] ConcaveHull_PointXYZI_t
+ctypedef ConcaveHull[cpp.PointXYZRGB] ConcaveHull_PointXYZRGB_t
+ctypedef ConcaveHull[cpp.PointXYZRGBA] ConcaveHull_PointXYZRGBA_t
 
 ###
 

@@ -32,6 +32,7 @@ include "Filters/WeightSampling.pxi"
 # include "Filters/ConditionAnd.pxi"
 # include "Filters/ConditionalRemoval.pxi"
 include "Surface/ConvexHull.pxi"
+include "Surface/ConcaveHull.pxi"
 # include "Common/RangeImage/RangeImages_180.pxi"
 # Registration
 # include "registration/GeneralizedIterativeClosestPoint_180.pxi"

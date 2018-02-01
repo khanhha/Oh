@@ -4,7 +4,7 @@ import pcl
 
 from objsimple2 import objreader
 
-basepath = 'G:\\Projects\\Oh\data\\test_data\\'
+basepath = 'D:\\Projects\\Oh\data\\test_data\\'
 filenames = {'normal_lucy_none-Slice-54_center_vn.obj',
              'normal_lucy_none-Slice-55_center_vn.obj',
              'normal_lucy_none-Slice-56_center_vn.obj',

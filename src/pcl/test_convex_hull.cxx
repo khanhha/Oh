@@ -54,6 +54,8 @@ VTK_MODULE_INIT(vtkInteractionStyle);
 #include <pcl/filters/octree_sampling.h>
 #include <pcl/filters/weight_sampling.h>
 #include <pcl/surface/convex_hull.h>
+#include <pcl/surface/concave_hull.h>
+
 
 #include <Eigen/Dense>
 
@@ -385,13 +387,33 @@ void test_convex_hull()
 	chull_builder.setComputeAreaVolume(true);
 	chull_builder.reconstruct(*out_hull);
 
+	PointCloud<PointXYZ>::Ptr  out_hull_1 = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>());
+	std::vector<pcl::Vertices> contours;
+	pcl::ConcaveHull<PointXYZ> chull_builder1;
+	chull_builder1.setInputCloud(cloud);
+	chull_builder1.setDimension(2);
+	chull_builder1.setAlpha(5);
+	chull_builder1.reconstruct(*out_hull_1, contours);
+
+	std::vector<Vector3f> segments;
+	for (auto vertices : contours)
+	{
+		auto len = vertices.vertices.size();
+		for (auto v : vertices.vertices)
+		{
+			segments.push_back(out_hull_1->at(v).getVector3fMap());
+			segments.push_back(out_hull_1->at((v + 1)%len).getVector3fMap());
+		}
+		break;
+	}
+
 	std::cout << chull_builder.getTotalArea() << std::endl;
 	std::cout << chull_builder.getTotalVolume() << std::endl;
 
-#if 0
+#if 1
 	auto cloud_actor = vtk_build_points_actor(cloud->points, Vector3f(1.0f, 1.0f, 1.0f), 1.0f);
-	auto sample_actor = vtk_build_points_actor(out_hull->points, Vector3f(1.0f, 0.0f, 0.0f), 4.0f);
-	auto segment_actor = vtk_build_segments_actor(chull_builder.test_segments, Vector3f(1.0f, 1.0f, 0.0f), 1.0f);
+	auto sample_actor = vtk_build_points_actor(out_hull_1->points, Vector3f(1.0f, 0.0f, 0.0f), 4.0f);
+	auto segment_actor = vtk_build_segments_actor(segments, Vector3f(1.0f, 1.0f, 0.0f), 1.0f);
 
 	g_ren1->AddActor(cloud_actor);
 	g_ren1->AddActor(sample_actor);

@@ -53,8 +53,17 @@
 #include <pcl/common/io.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pcl/surface/qhull.h>
 
+//#include <pcl/surface/qhull.h>
+
+#include "libqhull/libqhull.h"
+#include "libqhull/mem.h"
+#include "libqhull/qset.h"
+#include "libqhull/geom.h"
+#include "libqhull/merge.h"
+#include "libqhull/poly.h"
+#include "libqhull/io.h"
+#include "libqhull/stat.h"
 //////////////////////////////////////////////////////////////////////////
 template <typename PointInT> void
 pcl::ConcaveHull<PointInT>::reconstruct (PointCloud &output)

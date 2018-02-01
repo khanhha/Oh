@@ -40,6 +40,20 @@ cdef class OctreePointCloud:
     #     del self.me
     #     self.me = NULL      # just to be sure
 
+    def __cinit__(self, double resolution):
+        """
+        Constructs octree pointcloud with given resolution at lowest octree level
+        """
+        self.me = NULL
+        if resolution <= 0.:
+            raise ValueError("Expected resolution > 0., got %r" % resolution)
+
+        self.me = <pcloct.OctreePointCloud_t*> new pcloct.OctreePointCloud_t(resolution)
+
+    def __dealloc__(self):
+        del self.me
+        self.me = NULL
+
     def set_input_cloud(self, PointCloud pc):
         """
         Provide a pointer to the input data set.
@@ -58,11 +72,11 @@ cdef class OctreePointCloud:
     #     """
     #     self.me.defineBoundingBox(min_x, min_y, min_z, max_x, max_y, max_z)
 
-    # def add_points_from_input_cloud(self):
+    def add_points_from_input_cloud(self):
     #     """
     #     Add points from input point cloud to octree.
     #     """
-    #     self.me.addPointsFromInputCloud()
+         self.me.addPointsFromInputCloud()
 
     def get_bounding_box(self):
         cdef double minx = -1, miny = -1, minz= -1, maxx = -1, maxy = -1, maxz = -1

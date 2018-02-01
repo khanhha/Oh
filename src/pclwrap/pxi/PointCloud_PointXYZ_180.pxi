@@ -2,6 +2,7 @@
 # main
 cimport pcl_defs as cpp
 import numpy as np
+
 cimport numpy as cnp
 
 cnp.import_array()
@@ -225,6 +226,21 @@ cdef class PointCloud:
     def __getitem__(self, cnp.npy_intp nmidx):
         cdef cpp.PointXYZ *p = idx.getptr_at(self.thisptr(), nmidx)
         return p.x, p.y, p.z
+
+    def calculate_bounding_box(self):
+        maxflt = np.finfo('float32').max
+        bmin = [maxflt, maxflt, maxflt]
+        bmax = [-maxflt, -maxflt, -maxflt]
+        tmp = [0,0,0]
+        cdef cpp.PointXYZ *p
+        for i in range(self.size):
+            p = idx.getptr_at(self.thisptr(), i)
+            tmp[0] = p.x; tmp[1] = p.y; tmp[2] = p.z
+            for d in range(3):
+                bmin[d] = min(bmin[d], tmp[d])
+                bmax[d] = max(bmax[d], tmp[d])
+
+        return bmin, bmax
 
     # def from_file(self, char *f):
     #     """
