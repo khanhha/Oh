@@ -2,8 +2,7 @@ import os.path
 import numpy as np
 import vtk
 import sys
-from objUtil import objreader, objwriter
-from vtkDrawUtil import VtkDrawUtil
+from . import objUtil
 
 class SlicePerimeter:
 
@@ -12,7 +11,7 @@ class SlicePerimeter:
         self.faces = faces
 
     def calc_perimeter(self):
-        bmin, bmax = self.calculate_bounding_box(reader.vv)
+        bmin, bmax = self.calculate_bounding_box(self.verts)
         size = bmax - bmin
         mindim = size.argmin()
 
@@ -22,7 +21,7 @@ class SlicePerimeter:
 
         # eps = np.finfo(np.float32).eps
         eps = 0.0000001
-        segs = self.isect_mesh_plane(reader.vv, reader._fv, plane_v, plane_n, eps)
+        segs = self.isect_mesh_plane(self.verts, self.faces, plane_v, plane_n, eps)
 
         peri = 0.0
         for seg in segs:
@@ -105,45 +104,3 @@ class SlicePerimeter:
             bmax = np.maximum(bmax, vco)
 
         return bmin, bmax
-
-basepath = 'D:\\Projects\\Oh\data\\test_data\\'
-name = 'normal_lucy_none-Slice-55_center_vn.obj'
-filepath = basepath + name
-
-if os.path.exists(filepath) == False:
-    print('Error file does not exist: ' + filepath)
-    exit(1)
-
-reader = objreader.read(filepath)
-verts = reader.vv
-faces = reader._fv
-for f in faces:
-    assert len(f) == 3
-    for i in range(3):
-        f[i] = f[i] -1
-
-measure = SlicePerimeter(verts, faces)
-prm = measure.calc_perimeter()
-print('perimeter = ' + str(prm))
-
-# bmin, bmax = calculate_bounding_box(reader.vv)
-# size = bmax - bmin
-# mindim = size.argmin()
-#
-# plane_v = 0.5 * (bmin + bmax)
-# plane_n = np.array([0,0,0])
-# plane_n[mindim] = 1.0
-#
-# #eps = np.finfo(np.float32).eps
-# eps = 0.0000001
-# segs = isect_mesh_plane(reader.vv, reader._fv, plane_v, plane_n, eps)
-# seg_points = []
-# for seg in segs:
-#     for p in seg:
-#        seg_points.append(p)
-
-# drawer = VtkDrawUtil()
-# drawer.add_segments(seg_points, [1.0, 1, 0], 5.0)
-# drawer.add_points(seg_points, [1.0, .0, 0], 2.0)
-# drawer.add_triangles(reader.vv, reader._fv, [.5, .5, .5], [0, 1.0, 0])
-# drawer.draw()

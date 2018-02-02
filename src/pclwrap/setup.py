@@ -3,6 +3,8 @@ import numpy
 import glob, os
 from distutils.core import setup, Extension
 from Cython.Build import cythonize
+from shutil import rmtree, copytree, ignore_patterns
+
 
 compile_args = []
 
@@ -54,9 +56,15 @@ module = Extension('pcl._pcl',
                 language='c++')
 
 ext_module = cythonize(module)
+
+
+rmtree('.//pcl//util')
+copytree('.//util', './/pcl//util', ignore=ignore_patterns('*.pyc', 'tmp*'))
+
+
 setup(
     name='pcl',
-    packages=['pcl'],
+    packages=['pcl', 'pcl.util'],
     ext_modules= ext_module
 )
 

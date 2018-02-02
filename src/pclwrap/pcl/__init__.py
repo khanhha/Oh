@@ -1,5 +1,6 @@
 # XXX do a more specific import!
 from ._pcl import *
+from .util import *
 # vtkSmartPointer.h error (Linux)
 # from .pcl_visualization import *
 # from .pcl_grabber import *
