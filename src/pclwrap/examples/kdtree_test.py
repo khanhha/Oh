@@ -4,7 +4,7 @@ import pcl
 
 from objsimple2 import objreader
 
-basepath = 'G:\\Projects\\Oh\data\\test_data\\'
+basepath = 'D:\\Projects\\Oh\data\\test_data\\'
 filenames = {'normal_lucy_none-Slice-54_center_vn.obj'}
 
 for name in filenames:
@@ -45,7 +45,7 @@ for name in filenames:
     print ('    radius search: {} results'.format(len(ind_radius_search)))
     #
     # nearest k search
-    [ind_k_search, sqdist_k_search] = kdtree.nearest_k_search_for_a_point(searchPoint, 20)
+    [ind_k_search, sqdist_k_search] = kdtree.nearest_k_search_for_point(searchPoint, 20)
     print ('    nearest k search: {} results'.format(len(ind_k_search)))
     #
     # # nearest point
