@@ -8,7 +8,7 @@ cnp.import_array()
 from libcpp cimport bool
 cimport indexing as idx
 from shared_ptr cimport sp_assign
-from _pcl cimport PointCloud_Normal
+from pcl cimport PointCloud_Normal
 
 cdef class PointCloud_Normal:
     """

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Header for _pcl.pyx functionality that needs sharing with other modules.
+# Header for pcl.pyx functionality that needs sharing with other modules.
 # distutils: language=c++
 
 cimport pcl_defs as cpp

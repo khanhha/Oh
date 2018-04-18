@@ -14,17 +14,17 @@ if sys.platform == 'darwin':
 #clear file
 for root, dirs, files in os.walk("..//..//src"):
     for file in files:
-        if file == '_pcl.cpp':
+        if file == 'pcl.cpp':
             os.remove(os.path.join(root, file))
 
 source_files = [];
 for root, dirs, files in os.walk("..//..//src"):
     for file in files:
-        if file.endswith(".cpp") and  file != '_pcl.cpp':
+        if file.endswith(".cpp") and  file != 'pcl.cpp':
             source_files.append(os.path.join(root, file))
             print(os.path.join(root, file))
 
-source_files.insert(0, '_pcl.pyx')
+source_files.insert(0, 'pcl.pyx')
 
 
 icl_dirs = ['..//..//src', '..//..//3rdParty//eigen', '..//..//3rdParty']
@@ -47,7 +47,7 @@ else:
     print('not support platform!')
     exit(1)
 
-module = Extension('pcl._pcl',
+module = Extension('pcl',
                 sources = source_files,
                 include_dirs =  icl_dirs,
                 library_dirs = lib_dirs,
@@ -64,7 +64,10 @@ copytree('.//util', './/pcl//util', ignore=ignore_patterns('*.pyc', 'tmp*'))
 
 setup(
     name='pcl',
-    packages=['pcl', 'pcl.util'],
+    version='0.1.1',
+    maintainer= 'khanh_ha',
+    packages=['pcl','pcl.util'],
+    ext_package = 'pcl',
     ext_modules= ext_module
 )
 
@@ -107,7 +110,7 @@ setup(
 # ext_args['include_dirs'].append('G:\\Projects\\Oh\Oh\\3rdParty\eigen')
 # ext_args['include_dirs'].append('G:\\Projects\\Oh\\Oh\\src')
 #
-# module = [Extension("pcl._pcl", ["_pcl.pyx"], language="c++", **ext_args)]
+# module = [Extension("pcl._pcl", ["pcl.pyx"], language="c++", **ext_args)]
 #
 # setup(name='python-pcl',
 #       description='pcl wrapper',

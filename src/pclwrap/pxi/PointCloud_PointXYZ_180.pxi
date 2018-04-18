@@ -4,6 +4,7 @@ cimport pcl_defs as cpp
 import numpy as np
 
 cimport numpy as cnp
+from pcl cimport *
 
 cnp.import_array()
 
