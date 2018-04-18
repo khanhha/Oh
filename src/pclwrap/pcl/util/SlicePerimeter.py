@@ -1,5 +1,6 @@
 import os.path
 import numpy as np
+import vtk
 import sys
 from . import objUtil
 
