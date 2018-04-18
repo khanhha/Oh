@@ -58,8 +58,8 @@ module = Extension('pcl',
 ext_module = cythonize(module)
 
 
-rmtree('.//pcl//util')
-copytree('.//util', './/pcl//util', ignore=ignore_patterns('*.pyc', 'tmp*'))
+#rmtree('.//pcl//util')
+#copytree('.//util', './/pcl//util', ignore=ignore_patterns('*.pyc', 'tmp*'))
 
 
 setup(
