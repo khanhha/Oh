@@ -1,21 +1,10 @@
 import os.path
 import numpy as np
 import pcl
-
 from objsimple2 import objreader
 
-basepath = 'D:\\Projects\\Oh\data\\test_data\\'
-filenames = {'normal_lucy_none-Slice-54_center_vn.obj',
-             'normal_lucy_none-Slice-55_center_vn.obj',
-             'normal_lucy_none-Slice-56_center_vn.obj',
-             'normal_lucy_none-Slice-57_center_vn.obj',
-             'normal_lucy_tshirt-Slice-54_center_vn.obj',
-             'normal_lucy_tshirt-Slice-55_center_vn.obj',
-             'normal_lucy_tshirt-Slice-56_center_vn.obj',
-             'normal_lucy_tshirt-Slice-57_center_vn.obj',
-             'normal_lucy_standard_tee_repaired.obj',
-             'normal_lucy_none_repaired.obj',
-             'normal_oh_none_repaired.obj'}
+basepath = './/'
+filenames = {'lucy_none-Slice-55_center_vn_normal.obj'}
 
 for name in filenames:
     filepath = basepath + name
