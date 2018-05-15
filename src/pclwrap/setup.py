@@ -3,13 +3,31 @@ import numpy
 import glob, os
 from distutils.core import setup, Extension
 from Cython.Build import cythonize
+import sysconfig
 from shutil import rmtree, copytree, ignore_patterns
 
+_DEBUG = False
+# Generally I write code so that if DEBUG is defined as 0 then all optimisations
+# are off and asserts are enabled. Typically run times of these builds are x2 to x10
+# release builds.
+# If DEBUG > 0 then extra code paths are introduced such as checking the integrity of
+# internal data structures. In this case the performance is by no means comparable
+# with release builds.
+_DEBUG_LEVEL = 0
 
 compile_args = []
 
 if sys.platform == 'darwin':
     compile_args.append('-mmacosx-version-min=10.7')
+
+compile_args += ["-std=c++11"]
+if _DEBUG:
+    compile_args += ["-g3", "-O0", "-DDEBUG=%s" % _DEBUG_LEVEL, "-UNDEBUG"]
+else:
+    compile_args += ["-DNDEBUG", "-O3"]
+
+print('compile arguments: ')
+print(compile_args)
 
 #clear file
 for root, dirs, files in os.walk("..//..//src"):
@@ -53,7 +71,7 @@ module = Extension('pcl',
                 library_dirs = lib_dirs,
                 libraries = ['qhullstatic'],
                 extra_compile_args=compile_args,
-                language='c++')
+                language='c++11')
 
 ext_module = cythonize(module)
 
