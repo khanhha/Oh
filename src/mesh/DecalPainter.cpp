@@ -1,36 +1,3 @@
-/****************************************************************************
-* VCGLib                                                            o o     *
-* Visual and Computer Graphics Library                            o     o   *
-*                                                                _   O  _   *
-* Copyright(C) 2004-2016                                           \/)\/    *
-* Visual Computing Lab                                            /\/|      *
-* ISTI - Italian National Research Council                           |      *
-*                                                                    \      *
-* All rights reserved.                                                      *
-*                                                                           *
-* This program is free software; you can redistribute it and/or modify      *
-* it under the terms of the GNU General Public License as published by      *
-* the Free Software Foundation; either version 2 of the License, or         *
-* (at your option) any later version.                                       *
-*                                                                           *
-* This program is distributed in the hope that it will be useful,           *
-* but WITHOUT ANY WARRANTY; without even the implied warranty of            *
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             *
-* GNU General Public License (http://www.gnu.org/licenses/gpl.txt)          *
-* for more details.                                                         *
-*                                                                           *
-****************************************************************************/
-/*! \file trimesh_kdtree.cpp
-\ingroup code_sample
-
-\brief An example about using a kdtree to spatially index the vertexes of a mesh
-
-KdTree are one of the Spatial indexing data structures available.
-They are tailored for storing point-based structures and performing k-neighbours queries.
-In this simple example we simply compute the average distance of a vertex from its neighbours.
-\ref spatial_indexing for more Details
-*/
-
 #include<vcg/complex/complex.h>
 #include<wrap/io_trimesh/import.h>
 #include<wrap/io_trimesh/export.h>
@@ -48,6 +15,8 @@ In this simple example we simply compute the average distance of a vertex from i
 #include <igl/boundary_loop.h>
 #include <igl/harmonic.h>
 #include <igl/map_vertices_to_circle.h>
+#include <igl/list_to_matrix.h>
+
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
@@ -85,15 +54,18 @@ struct MyUsedTypes : public UsedTypes<	Use<MyVertex>   ::AsVertexType,
 	Use<MyFace>     ::AsFaceType> {};
 
 class MyVertex : public Vertex<MyUsedTypes, vertex::VEAdj, vertex::Coord3d, vertex::TexCoord2d, vertex::BitFlags  > {};
-class MyFace : public Face< MyUsedTypes, face::VertexRef, face::FFAdj, face::WedgeTexCoord2d, face::BitFlags, face::Mark > {};
-class MyEdge : public Edge<MyUsedTypes, edge::VertexRef, edge::VEAdj> {};
+class MyFace : public Face< MyUsedTypes, face::VertexRef, face::FEAdj, face::FFAdj, face::WedgeTexCoord2d, face::BitFlags, face::Mark > {};
+class MyEdge : public Edge<MyUsedTypes, edge::VertexRef, edge::VEAdj, edge::EFAdj, edge::BitFlags> {};
 
 typedef vector<MyVertex> VertexContainer;
 typedef vector<MyFace> FaceContainer;
 typedef vector<MyEdge> EdgeContainer;
 class MyMesh : public tri::TriMesh< VertexContainer, FaceContainer , EdgeContainer> {};
+
 typedef MyMesh::VertexPointer	VPointer;
 typedef MyMesh::FacePointer		FPointer;
+typedef MyMesh::EdgePointer		EPointer;
+typedef vcg::Octree<MyMesh::VertexType, double> OctreeType;
 
 struct LocalDecalTriangle
 {
@@ -242,6 +214,35 @@ void mesh_matrix(MyMesh &mesh, EMatrixXScalar &V, EMatrixX &F)
 	}
 }
 
+void mesh_matrix(MyMesh &mesh, std::vector<FPointer> &trigs, EMatrixXScalar &V, EMatrixX &F, EVectorX &vmap)
+{
+	vmap.resize(mesh.VN());
+	vmap.array().fill(-1);
+	std::vector<EVector3Scalar> vcoords;
+	F.resize(trigs.size(), 3);
+	int cnt = 0;
+	for (int ti = 0; ti < trigs.size(); ++ti)
+	{
+		FPointer t = trigs[ti];
+		for (int i = 0; i < 3; ++i)
+		{
+			int idx = vcg::tri::Index(mesh, t->V(i));
+			if (vmap[idx] == -1)
+			{
+				vmap[idx] = cnt++;
+				const vcgPoint3 &co = t->V(i)->cP();
+				vcoords.push_back(EVector3Scalar(co[0], co[1], co[2]));
+			}
+
+			F(ti, i) = vmap[idx];
+		}
+	}
+
+	V.resize(vcoords.size(), 3);
+	for (size_t i = 0; i < vcoords.size(); ++i)
+		V.row(i) = vcoords[i];
+}
+
 void distort_circle_to_square(EMatrixXScalar &circle_points)
 {
 	size_t n = circle_points.rows();
@@ -265,17 +266,14 @@ double calc_path_len(const std::vector<VPointer> &path)
 
 void construct_uv_rect_boundary(
 	const std::vector<EVector2Scalar> &corners,
-	const std::vector<VPointer> &vert_corners,
 	const std::vector<std::vector<VPointer>> &paths, 
 	std::vector<EMatrixXScalar> &uvpaths)
 {
-	assert(vert_corners.size() == 4);
 	assert(corners.size() == 4);
 	assert(paths.size() == 4);
 	assert(uvpaths.size() == 4);
 	for (int i = 0; i <4; ++i){
 		assert(!paths[i].empty());
-		assert( paths[i][0] == vert_corners[i]);
 	}
 
 	for (int i = 0; i < 4; ++i)
@@ -400,6 +398,19 @@ VPointer edge_other_vert(MyMesh::EdgePointer e, VPointer v)
 	return (e->V(0) == v) ? e->V(1) : e->V(0);
 }
 
+EPointer edge_from_verts(VPointer v0, VPointer v1)
+{
+	edge::VEIterator<MyMesh::EdgeType> ve_iter(v0);
+	while (!ve_iter.End())
+	{
+		VPointer other_v = edge_other_vert(ve_iter.E(), v0);
+		if (other_v == v1)
+			return ve_iter.E();
+		++ve_iter;
+	}
+	return nullptr;
+}
+
 bool find_geodesic_path(MyMesh &mesh, VPointer vstart, VPointer vend, std::vector<VPointer> &path, int max_path_len = 10000)
 {
 	std::vector<int> path_trace(mesh.VN(),-1);
@@ -477,12 +488,8 @@ bool find_geodesic_path(MyMesh &mesh, VPointer vstart, VPointer vend, std::vecto
 	}
 }
 
-bool find_decal_boundary(MyMesh &mesh, vcgRect3 &decal_rect, std::vector<VPointer> &decal_verts, std::vector<std::vector<VPointer>> &paths)
+bool find_decal_boundary(MyMesh &mesh, OctreeType &octree, vcgRect3 &decal_rect, std::vector<VPointer> &decal_verts, std::vector<std::vector<VPointer>> &paths)
 {
-	typedef vcg::Octree<MyMesh::VertexType, double> OctreeType;
-	OctreeType octree;
-	octree.Set(mesh.vert.begin(), mesh.vert.end());
-
 	const double max_dst = 0.5*(decal_rect[0] - decal_rect[1]).Norm();
 	double min_dst;
 	decal_verts.resize(4);
@@ -496,9 +503,6 @@ bool find_decal_boundary(MyMesh &mesh, vcgRect3 &decal_rect, std::vector<VPointe
 	paths.resize(4);
 	for (auto &p : paths) p.clear();
 	
-	vcg::tri::RequireVEAdjacency(mesh);
-	vcg::tri::UpdateTopology<MyMesh>::AllocateEdge(mesh);
-	vcg::tri::UpdateTopology<MyMesh>::VertexEdge(mesh);
 	for (int i = 0; i < 4; ++i)
 	{
 		VPointer vstart = decal_verts[i];
@@ -512,8 +516,70 @@ bool find_decal_boundary(MyMesh &mesh, vcgRect3 &decal_rect, std::vector<VPointe
 	return true;
 }
 
-bool extract_decal_triangles(std::vector<FPointer> &trigs, std::vector<std::vector<VPointer>> &boundary)
+
+void merge_path(std::vector<std::vector<VPointer>> &paths, std::vector<VPointer> &path)
 {
+	for (auto &p : paths)
+		path.insert(path.end(), p.begin(), p.end());
+}
+
+bool extract_decal_triangles(MyMesh &mesh, std::vector<std::vector<VPointer>> &boundaries, FPointer seed_trig, std::vector<FPointer> &trigs)
+{
+	auto is_boundary_face = [](FPointer f) -> bool
+	{
+		for (auto i = 0; i < 3; ++i)
+			if (f->cFEp(i)->Flags() & MyMesh::EdgeType::VISITED)
+				return true;
+		return false;
+	};
+
+	//propagate from the center triangle
+	std::deque<FPointer> queue;
+	seed_trig->Flags() |= MyMesh::FaceType::VISITED;
+	queue.push_back(seed_trig);
+	trigs.push_back(seed_trig);
+
+	for (auto fit = mesh.face.begin(); fit != mesh.face.end(); ++fit)
+		fit->Flags() = (fit->Flags() & ~MyMesh::FaceType::VISITED);
+	for (auto it = mesh.edge.begin(); it != mesh.edge.end(); ++it)
+		it->Flags() = (it->Flags() & ~MyMesh::EdgeType::VISITED);
+
+	//close the boundary to let no triangle escape.
+	std::vector<VPointer> closed_bdr;
+	merge_path(boundaries, closed_bdr);
+	size_t npoints = closed_bdr.size();
+	for (int i = 0; i < closed_bdr.size(); ++i)
+	{
+		VPointer v0 = closed_bdr[i];
+		VPointer v1 = closed_bdr[(i + 1)%npoints];
+		EPointer e = edge_from_verts(v0, v1);
+		assert(e != nullptr);
+		e->Flags() |= MyMesh::EdgeType::VISITED;
+	}
+	
+	while (!queue.empty())
+	{
+		FPointer face = queue.front();
+		queue.pop_front();
+		for (int i = 0; i < 3; ++i)
+		{
+			FPointer fadj = face->FFp(i);
+
+			if (fadj && !(fadj->cFlags() & MyMesh::FaceType::VISITED))
+			{
+				fadj->Flags() |= MyMesh::FaceType::VISITED;
+				trigs.push_back(fadj);
+				
+				//do no go across boundary 
+				if(!is_boundary_face(fadj))
+					queue.push_back(fadj);
+			}
+		}
+	}
+
+	for (auto fit = mesh.face.begin(); fit != mesh.face.end(); ++fit)
+		fit->Flags() = (fit->Flags() & ~MyMesh::FaceType::VISITED);
+
 	return true;
 }
 
@@ -562,6 +628,25 @@ double estimate_distance(MyMesh &mesh, const vcg::Plane3d &plane, const vcgPoint
 	double body_width = mesh.bbox.Dim()[mesh.bbox.MinDim()];
 	double distance = std::abs(vcg::SignedDistancePlanePoint(plane, closest_p_on_mesh));
 	return 0.2 * body_width + distance;
+}
+
+FPointer find_seed_triangle(MyMesh &mesh, OctreeType &octree, vcgRect3 &decal_rect)
+{
+	vcgPoint3 center = (decal_rect[0] + decal_rect[1] + decal_rect[2] + decal_rect[3])*0.25;
+	double min_dst;
+	const double max_dst = octree.BoundingBox().Dim()[octree.BoundingBox().MinDim()];
+	VPointer closest = vcg::tri::GetClosestVertex(mesh, octree, center, max_dst, min_dst);
+	
+	edge::VEIterator<MyMesh::EdgeType> ve_iter(closest);
+	while (!ve_iter.End())
+	{
+		EPointer e = ve_iter.E();
+		if (e && e->EFp())
+			return e->EFp();
+		++ve_iter;
+	}
+
+	return nullptr;
 }
 
 FPointer find_seed_triangle(MyMesh &mesh, const vcgRect3 &decal_rect)
@@ -899,14 +984,50 @@ cv::Mat3b output_textured_rasterization(const cv::Size &size, const cv::Mat3b &t
 	return textured_raserization_img;
 }
 
-void test_harmonic_parameterize(MyMesh &mesh)
+size_t total_vertices(const std::vector<std::vector<VPointer>> &boundary)
 {
-	EMatrixXScalar V;
-	EMatrixX F;
-	mesh_matrix(mesh, V, F);
+	size_t cnt = 0;
+	for (int i = 0; i < boundary.size(); ++i)
+		cnt += boundary[i].size();
+	return cnt;
+}
 
+void parameterizre_decal(MyMesh &mesh, std::vector<FPointer> &decal_trigs, std::vector<std::vector<VPointer>> &boundary)
+{
+	std::vector<EVector2Scalar> corners(4);
+	corners[0] = EVector2Scalar(1.0, 1.0);
+	corners[1] = EVector2Scalar(-1.0, 1.0);
+	corners[2] = EVector2Scalar(-1.0, -1.0);
+	corners[3] = EVector2Scalar(1.0, -1.0);
+
+	std::vector<EMatrixXScalar> uvs(4);
+	construct_uv_rect_boundary(corners, boundary, uvs);
+
+	EMatrixXScalar V;
+	EMatrixX F;	
+	EVectorX v_map;
+	mesh_matrix(mesh, decal_trigs, V, F, v_map);
+
+	size_t n_bdr_points = total_vertices(boundary);
+	EVectorX bnd(n_bdr_points);
+	EMatrixXScalar bnd_uv(n_bdr_points, 2);
+	size_t cnt = 0;
+	for (size_t path_idx = 0; path_idx < 4; ++path_idx)
+	{
+		for (size_t v_idx = 0; v_idx < boundary[path_idx].size(); ++v_idx)
+		{
+			int mapped_idx = v_map[vcg::tri::Index(mesh, boundary[path_idx][v_idx])];
+			assert(mapped_idx >= 0);
+			bnd[cnt] = mapped_idx;
+			bnd_uv.row(cnt) = uvs[path_idx].row(v_idx);
+			cnt++;
+		}
+	}
+
+	// Harmonic parametrization for the internal vertices
 	EMatrixXScalar V_uv;
-	parameterize_mesh_to_rectangular_domain(V, F, V_uv);
+	igl::harmonic(V, F, bnd, bnd_uv, 1, V_uv);
+	V_uv = 0.5 * (1. + V_uv.array());
 
 	cv::Mat1b img(1024, 1024, uchar(0));
 	test_draw_triangles_over_texture(img, F, V_uv);
@@ -918,24 +1039,26 @@ void test_find_decal_region(MyMesh &mesh, string decal_rect_path)
 	vcgRect3 decal_rect;
  	import_decal_rectangle(decal_rect_path, decal_rect);
 
+	typedef vcg::Octree<MyMesh::VertexType, double> OctreeType;
+	OctreeType octree;
+	octree.Set(mesh.vert.begin(), mesh.vert.end());
+
+	vcg::tri::RequireVEAdjacency(mesh);
+	vcg::tri::UpdateTopology<MyMesh>::FaceFace(mesh);
+	vcg::tri::UpdateTopology<MyMesh>::AllocateEdge(mesh);
+	vcg::tri::UpdateTopology<MyMesh>::VertexEdge(mesh);
+
 	std::vector<VPointer> decal_verts(4);
 	std::vector<std::vector<VPointer>> paths(4);
-	find_decal_boundary(mesh, decal_rect, decal_verts, paths);
+	find_decal_boundary(mesh, octree, decal_rect, decal_verts, paths);
 
-	std::vector<EVector2Scalar> corners(4);
-	corners[0] = EVector2Scalar( 1.0,  1.0);
-	corners[1] = EVector2Scalar(-1.0,  1.0);
-	corners[2] = EVector2Scalar(-1.0, -1.0);
-	corners[3] = EVector2Scalar( 1.0, -1.0);
-
-	std::vector<EMatrixXScalar> uvs(4);
-	construct_uv_rect_boundary(corners, decal_verts, paths, uvs);
-
-	for (EMatrixXScalar &uv : uvs)
-		uv = 0.8 * 0.5 * (uv.array() + 1.0);
-	cv::Mat3b img(512,512, cv::Vec3b(0,0,0));
-	test_draw_segments(img, uvs);
-	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\uv_boundary.png", img);
+	//find a seed triangle
+	FPointer seed_tri = find_seed_triangle(mesh, octree, decal_rect);
+	
+	std::vector<FPointer> decal_trigs;
+	extract_decal_triangles(mesh, paths, seed_tri, decal_trigs);
+	
+	parameterizre_decal(mesh, decal_trigs, paths);
 }
 
 int main(int argc, char **argv)
