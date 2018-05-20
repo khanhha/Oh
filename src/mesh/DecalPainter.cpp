@@ -84,13 +84,16 @@ struct MyUsedTypes : public UsedTypes<	Use<MyVertex>   ::AsVertexType,
 	Use<MyEdge>     ::AsEdgeType,
 	Use<MyFace>     ::AsFaceType> {};
 
-class MyVertex : public Vertex<MyUsedTypes, vertex::Coord3d, vertex::Normal3d, vertex::TexCoord2d, vertex::BitFlags  > {};
+class MyVertex : public Vertex<MyUsedTypes, vertex::VEAdj, vertex::Coord3d, vertex::TexCoord2d, vertex::BitFlags  > {};
 class MyFace : public Face< MyUsedTypes, face::VertexRef, face::FFAdj, face::WedgeTexCoord2d, face::BitFlags, face::Mark > {};
-class MyEdge : public Edge<MyUsedTypes> {};
+class MyEdge : public Edge<MyUsedTypes, edge::VertexRef, edge::VEAdj> {};
+
 typedef vector<MyVertex> VertexContainer;
 typedef vector<MyFace> FaceContainer;
 typedef vector<MyEdge> EdgeContainer;
 class MyMesh : public tri::TriMesh< VertexContainer, FaceContainer , EdgeContainer> {};
+typedef MyMesh::VertexPointer	VPointer;
+typedef MyMesh::FacePointer		FPointer;
 
 struct LocalDecalTriangle
 {
@@ -252,6 +255,51 @@ void distort_circle_to_square(EMatrixXScalar &circle_points)
 	}
 }
 
+double calc_path_len(const std::vector<VPointer> &path)
+{
+	double len = 0;
+	for (int i = 1; i < path.size(); ++i)
+		len += (path[i]->cP() - path[i - 1]->cP()).Norm();
+	return len;
+}
+
+void construct_uv_rect_boundary(
+	const std::vector<EVector2Scalar> &corners,
+	const std::vector<VPointer> &vert_corners,
+	const std::vector<std::vector<VPointer>> &paths, 
+	std::vector<EMatrixXScalar> &uvpaths)
+{
+	assert(vert_corners.size() == 4);
+	assert(corners.size() == 4);
+	assert(paths.size() == 4);
+	assert(uvpaths.size() == 4);
+	for (int i = 0; i <4; ++i){
+		assert(!paths[i].empty());
+		assert( paths[i][0] == vert_corners[i]);
+	}
+
+	for (int i = 0; i < 4; ++i)
+	{
+		const std::vector<VPointer> &path = paths[i];
+		size_t  n_path_verts = path.size();
+		double	path_len = calc_path_len(path);
+		
+		EVector2Scalar uv_start = corners[i], uv_end = corners[(i + 1)%4];
+		EVector2Scalar	edge = uv_end - uv_start;
+		
+		EMatrixXScalar &uvpath = uvpaths[i];
+		uvpath.resize(n_path_verts,2);
+		uvpath.row(0) = uv_start;
+
+		double went_so_far = 0.;
+		for (int j = 1; j < n_path_verts; ++j)
+		{
+			went_so_far += (path[j]->cP() - path[j - 1]->cP()).Norm();
+			uvpath.row(j) = uv_start + (went_so_far / path_len) * edge;
+		}
+	}
+}
+
 void parameterize_mesh_to_rectangular_domain(const EMatrixXScalar &V, const EMatrixX &F, EMatrixXScalar &V_uv)
 {
 	EVectorX bnd;
@@ -328,7 +376,148 @@ bool import_decal_mesh_plane(std::string file_path, vcgRect3 &decal_rect)
 	return false;
 }
 
-bool is_tri_candiate(MyMesh::FacePointer tri, const vcg::Plane3d &plane, const vcg::Box3d &box, const double &furthest_dist)
+bool import_decal_rectangle(std::string file_path, vcgRect3 &decal_rect)
+{
+	std::ifstream ff(file_path);
+	if (ff.good())
+	{
+		for (int iv = 0; iv < 4; ++iv)
+		{
+			for (int d = 0; d < 3; ++d)
+			{
+				double co; ff >> co;
+				decal_rect[iv][d] = co;
+			}
+		}
+		return true;
+	}
+	else
+		return false;
+}
+
+VPointer edge_other_vert(MyMesh::EdgePointer e, VPointer v)
+{
+	return (e->V(0) == v) ? e->V(1) : e->V(0);
+}
+
+bool find_geodesic_path(MyMesh &mesh, VPointer vstart, VPointer vend, std::vector<VPointer> &path, int max_path_len = 10000)
+{
+	std::vector<int> path_trace(mesh.VN(),-1);
+
+	bool reach_end = false;
+
+	for (auto vit = mesh.vert.begin(); vit != mesh.vert.end(); ++vit)
+		vit->Flags() = 0;
+
+	int cur_path_len = 0;
+
+	std::deque<VPointer> vqueue;
+	vstart->Flags() |= MyMesh::VertexType::VISITED;
+	vqueue.push_front(vstart);
+	while (!vqueue.empty())
+	{
+		VPointer v = vqueue.front();
+		vqueue.pop_front();
+
+		int v_idx = vcg::tri::Index(mesh, v);
+		
+		bool got_one = false;
+
+		edge::VEIterator<MyMesh::EdgeType> ve_iter(v);
+		while (!ve_iter.End())
+		{
+			VPointer other_v = edge_other_vert(ve_iter.E(), v);
+			if (!(other_v->cFlags() & MyMesh::VertexType::VISITED))
+			{
+				got_one = true;
+				other_v->Flags() |= MyMesh::VertexType::VISITED;
+
+				path_trace[vcg::tri::Index(mesh, other_v)] = v_idx;
+
+				if (other_v == vend)
+				{
+					reach_end = true;
+					break;
+				}
+				else
+				{
+					vqueue.push_back(other_v);
+				}
+			}
+
+			++ve_iter;
+		}
+
+		if (reach_end)
+		{
+			break;
+		}
+
+		cur_path_len++;
+
+		if (cur_path_len > max_path_len)
+			break;
+	}
+
+	if (reach_end)
+	{
+		int trace_idx = vcg::tri::Index(mesh, vend);
+
+		while (path_trace[trace_idx] != -1)
+		{
+			path.push_back(&mesh.vert[path_trace[trace_idx]]);
+			trace_idx = path_trace[trace_idx];
+		}
+		std::reverse(path.begin(), path.end());
+		return true;
+	}
+	else 
+	{
+		return false;
+	}
+}
+
+bool find_decal_boundary(MyMesh &mesh, vcgRect3 &decal_rect, std::vector<VPointer> &decal_verts, std::vector<std::vector<VPointer>> &paths)
+{
+	typedef vcg::Octree<MyMesh::VertexType, double> OctreeType;
+	OctreeType octree;
+	octree.Set(mesh.vert.begin(), mesh.vert.end());
+
+	const double max_dst = 0.5*(decal_rect[0] - decal_rect[1]).Norm();
+	double min_dst;
+	decal_verts.resize(4);
+	for (int i = 0; i < 4; ++i) 
+	{
+		decal_verts[i] = vcg::tri::GetClosestVertex(mesh, octree, decal_rect[i], max_dst, min_dst);
+		if (decal_verts[i] == nullptr)
+			return false;
+	}
+
+	paths.resize(4);
+	for (auto &p : paths) p.clear();
+	
+	vcg::tri::RequireVEAdjacency(mesh);
+	vcg::tri::UpdateTopology<MyMesh>::AllocateEdge(mesh);
+	vcg::tri::UpdateTopology<MyMesh>::VertexEdge(mesh);
+	for (int i = 0; i < 4; ++i)
+	{
+		VPointer vstart = decal_verts[i];
+		VPointer vend   = decal_verts[(i + 1)%4];
+		find_geodesic_path(mesh, vstart, vend, paths[i], 100000);
+	}
+
+	for (int i = 0; i < 4; ++i)
+		if (paths[i].empty())
+			return false;
+	return true;
+}
+
+bool extract_decal_triangles(std::vector<FPointer> &trigs, std::vector<std::vector<VPointer>> &boundary)
+{
+	return true;
+}
+
+bool is_tri_candiate(FPointer tri, const vcg::Plane3d &plane, const vcg::Box3d &box, const double &furthest_dist)
 {
 	double dst = std::abs(vcg::SignedDistancePlanePoint(plane, vcg::Barycenter(*tri)));
 	if (dst > furthest_dist)
@@ -342,10 +531,11 @@ bool is_tri_candiate(MyMesh::FacePointer tri, const vcg::Plane3d &plane, const v
 	}
 	return false;
 }
-void construct_a_mesh(MyMesh &mesh, const std::vector<MyMesh::FacePointer> &tris, MyMesh &new_mesh)
+
+void construct_a_mesh(MyMesh &mesh, const std::vector<FPointer> &tris, MyMesh &new_mesh)
 {
-	std::unordered_map<MyMesh::VertexPointer, MyMesh::VertexPointer> vert_map;
-	for (const MyMesh::FacePointer &tri : tris)
+	std::unordered_map<VPointer, VPointer> vert_map;
+	for (const FPointer &tri : tris)
 	{
 		for (auto i = 0; i < 3; ++i)
 		{
@@ -356,7 +546,7 @@ void construct_a_mesh(MyMesh &mesh, const std::vector<MyMesh::FacePointer> &tris
 
 	vcg::tri::Append<MyMesh,MyMesh>::Selected(new_mesh, mesh);
 
-	for (const MyMesh::FacePointer &tri : tris)
+	for (const FPointer &tri : tris)
 	{
 		for (auto i = 0; i < 3; ++i)
 		{
@@ -374,7 +564,7 @@ double estimate_distance(MyMesh &mesh, const vcg::Plane3d &plane, const vcgPoint
 	return 0.2 * body_width + distance;
 }
 
-MyMesh::FacePointer find_seed_triangle(MyMesh &mesh, const vcgRect3 &decal_rect)
+FPointer find_seed_triangle(MyMesh &mesh, const vcgRect3 &decal_rect)
 {
 	vcgPoint3 center = (decal_rect[0] + decal_rect[1] + decal_rect[2] + decal_rect[3])*0.25;
 	vcgPoint3 normal = ((decal_rect[1] - decal_rect[0]) ^ (decal_rect[2] - decal_rect[1])).normalized();
@@ -385,7 +575,7 @@ MyMesh::FacePointer find_seed_triangle(MyMesh &mesh, const vcgRect3 &decal_rect)
 	double min_dst = std::numeric_limits<double>::max();
 	const  double max_dst_limit = min_dst;
 	vcg::Ray3d ray(center, normal);
-	MyMesh::FacePointer closest_face = vcg::tri::DoRay(mesh, spacial, ray, max_dst_limit, min_dst);
+	FPointer closest_face = vcg::tri::DoRay(mesh, spacial, ray, max_dst_limit, min_dst);
 	if (!closest_face)
 	{
 		normal = -normal;
@@ -410,13 +600,13 @@ vcg::Plane3d which_plane(const vcgRect3 &decal_rect, const vcgPoint3 &point)
 	return rect_plane;
 }
 
-bool find_candidate_triangles(MyMesh &mesh, const vcgRect3 &decal_rect, std::vector<MyMesh::FacePointer> &r_tri_candidates)
+bool find_candidate_triangles(MyMesh &mesh, const vcgRect3 &decal_rect, std::vector<FPointer> &r_tri_candidates)
 {
 	vcg::Box3d rect_box;
 	for (int i = 0; i < 4; ++i)
 		rect_box.Add(decal_rect[i]);
 
-	MyMesh::FacePointer seed_face = find_seed_triangle(mesh, decal_rect);
+	FPointer seed_face = find_seed_triangle(mesh, decal_rect);
 	if (seed_face)
 	{
 		vcgPoint3 seed_point = vcg::Barycenter(*seed_face);
@@ -425,17 +615,17 @@ bool find_candidate_triangles(MyMesh &mesh, const vcgRect3 &decal_rect, std::vec
 		double furthest_dst = estimate_distance(mesh, rect_plane, seed_point);
 
 		//propagate from the center triangle
-		std::deque<MyMesh::FacePointer> queue;
+		std::deque<FPointer> queue;
 		seed_face->Flags() |= MyMesh::FaceType::VISITED;
 		queue.push_back(seed_face);
 		r_tri_candidates.push_back(seed_face);
 		while (!queue.empty())
 		{
-			MyMesh::FacePointer face = queue.front();
+			FPointer face = queue.front();
 			queue.pop_front();
 			for (int i = 0; i < 3; ++i)
 			{
-				MyMesh::FacePointer fadj = face->FFp(i);
+				FPointer fadj = face->FFp(i);
 				
 				if (fadj && !(fadj->cFlags() & MyMesh::FaceType::VISITED) &&  is_tri_candiate(fadj, rect_plane, rect_box, furthest_dst))
 				{
@@ -585,6 +775,23 @@ cv::Mat3b test_draw_triangles(const cv::Size &size, const std::vector<LocalDecal
 	return img_out;
 }
 
+void test_draw_segments(cv::Mat3b &mat, const std::vector<EMatrixXScalar> &paths)
+{
+	int width = mat.cols;
+	int height = mat.rows;
+
+	for (const EMatrixXScalar &path : paths)
+	{
+		size_t npoints = path.rows();
+		for (int i = 0; i < npoints - 1; ++i)
+		{
+			cv::Point p0(path(i,0) * width, path(i,1) * height);
+			cv::Point p1(path(i+1,0) * width, path(i+1,1) * height);
+			cv::line(mat, p0, p1, Scalar(255, 255, 255), 1);
+		}
+	}
+}
+
 cv::Mat3b generate_background_image(cv::Size size, cv::Vec3b mean_color, cv::Vec3b variance)
 {
 	cv::RNG rng(12345);
@@ -706,6 +913,30 @@ void test_harmonic_parameterize(MyMesh &mesh)
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\harmonic_raster.png", img);
 }
 
+void test_find_decal_region(MyMesh &mesh, string decal_rect_path)
+{
+	vcgRect3 decal_rect;
+ 	import_decal_rectangle(decal_rect_path, decal_rect);
+
+	std::vector<VPointer> decal_verts(4);
+	std::vector<std::vector<VPointer>> paths(4);
+	find_decal_boundary(mesh, decal_rect, decal_verts, paths);
+
+	std::vector<EVector2Scalar> corners(4);
+	corners[0] = EVector2Scalar( 1.0,  1.0);
+	corners[1] = EVector2Scalar(-1.0,  1.0);
+	corners[2] = EVector2Scalar(-1.0, -1.0);
+	corners[3] = EVector2Scalar( 1.0, -1.0);
+
+	std::vector<EMatrixXScalar> uvs(4);
+	construct_uv_rect_boundary(corners, decal_verts, paths, uvs);
+
+	for (EMatrixXScalar &uv : uvs)
+		uv = 0.8 * 0.5 * (uv.array() + 1.0);
+	cv::Mat3b img(512,512, cv::Vec3b(0,0,0));
+	test_draw_segments(img, uvs);
+	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\uv_boundary.png", img);
+}
 
 int main(int argc, char **argv)
 {
@@ -713,6 +944,7 @@ int main(int argc, char **argv)
 	string  decal_img_path = "D:\\Projects\\Oh\\data\\3D\\Texture_retargeting\\decal_images\\decal.png";
 	//string decal_img_path = "D:\\Projects\\Oh\\data\\3D\\Texture_retargeting\\decal_images\\front_12x16_thick_flame_top_modified.png";
 	string decal_plane_file_path	= "D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\laxsquadT_mBBB_xLA4_0430_front_decal_plane.obj";
+	string decal_rect_file_path = "D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\laxsquadT_mBBB_xLA4_0430_decal_rectangle.txt";
 	string mesh_path				= "D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\laxsquadT_mBBB_xLA4_0430_front.obj";
 	string texture_img_path			= "D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\laxsquadT_mBBB_xLA4_0430.1001_backup.jpg";
 	//string texture_img_path = "D:\\Projects\\Oh\\data\\3D\\Texture_retargeting\\result\\original_texture_with_triangles.png";
@@ -748,7 +980,7 @@ int main(int argc, char **argv)
 		printf("Error reading file  %s\n", argv[1]);
 	vcg::tri::UpdateTopology<MyMesh>::FaceFace(org_mesh);
 
-	std::vector<MyMesh::FacePointer> tri_candidates;
+	std::vector<FPointer> tri_candidates;
 	find_candidate_triangles(org_mesh, decal_plane, tri_candidates);
 
 	construct_a_mesh(org_mesh, tri_candidates, mesh);
@@ -758,8 +990,8 @@ int main(int argc, char **argv)
 #else
 	tri::io::Importer<MyMesh>::Open(mesh, mesh_path.c_str());
 #endif
-
-	test_harmonic_parameterize(mesh);
+	test_find_decal_region(mesh, decal_rect_file_path);
+	//test_harmonic_parameterize(mesh);
 	exit(1);
 
 	vcgPoint3 center, axis[3];
