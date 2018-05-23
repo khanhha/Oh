@@ -53,7 +53,7 @@ struct MyUsedTypes : public UsedTypes<	Use<MyVertex>   ::AsVertexType,
 	Use<MyEdge>     ::AsEdgeType,
 	Use<MyFace>     ::AsFaceType> {};
 
-class MyVertex : public Vertex<MyUsedTypes, vertex::VEAdj, vertex::Coord3d, vertex::TexCoord2d, vertex::BitFlags  > {};
+class MyVertex : public Vertex<MyUsedTypes, vertex::VEAdj, vertex::Coord3d, vertex::Normal3d, vertex::BitFlags  > {};
 class MyFace : public Face< MyUsedTypes, face::VertexRef, face::FEAdj, face::FFAdj, face::WedgeTexCoord2d, face::BitFlags, face::Mark > {};
 class MyEdge : public Edge<MyUsedTypes, edge::VertexRef, edge::VEAdj, edge::EFAdj, edge::BitFlags> {};
 
@@ -414,6 +414,7 @@ EPointer edge_from_verts(VPointer v0, VPointer v1)
 bool find_geodesic_path(MyMesh &mesh, VPointer vstart, VPointer vend, std::vector<VPointer> &path, int max_path_len = 10000)
 {
 	std::vector<int> path_trace(mesh.VN(),-1);
+	std::vector<double> short_distances(mesh.VN(),-1.);
 
 	bool reach_end = false;
 
@@ -425,6 +426,7 @@ bool find_geodesic_path(MyMesh &mesh, VPointer vstart, VPointer vend, std::vecto
 	std::deque<VPointer> vqueue;
 	vstart->Flags() |= MyMesh::VertexType::VISITED;
 	vqueue.push_front(vstart);
+	short_distances[vcg::tri::Index(mesh, vstart)] = 0.0;
 	while (!vqueue.empty())
 	{
 		VPointer v = vqueue.front();
@@ -434,26 +436,36 @@ bool find_geodesic_path(MyMesh &mesh, VPointer vstart, VPointer vend, std::vecto
 		
 		bool got_one = false;
 
+		double cur_dst = short_distances[v_idx];
 		edge::VEIterator<MyMesh::EdgeType> ve_iter(v);
 		while (!ve_iter.End())
 		{
 			VPointer other_v = edge_other_vert(ve_iter.E(), v);
-			if (!(other_v->cFlags() & MyMesh::VertexType::VISITED))
+			size_t other_v_idx = vcg::tri::Index(mesh, other_v);
+			double e_len = (other_v->cP() - v->cP()).Norm();
+			bool is_visited = other_v->cFlags() & MyMesh::VertexType::VISITED;
+			if (is_visited)
 			{
-				got_one = true;
+				if (short_distances[other_v_idx] > cur_dst + e_len)
+				{
+					short_distances[other_v_idx] = cur_dst + e_len;
+					path_trace[other_v_idx] = v_idx;
+				}
+			}
+			else
+			{
 				other_v->Flags() |= MyMesh::VertexType::VISITED;
 
-				path_trace[vcg::tri::Index(mesh, other_v)] = v_idx;
+				path_trace[other_v_idx] = v_idx;
+				short_distances[other_v_idx] = cur_dst + e_len;
 
-				if (other_v == vend)
-				{
-					reach_end = true;
-					break;
-				}
-				else
-				{
-					vqueue.push_back(other_v);
-				}
+				vqueue.push_back(other_v);
+			}
+
+			if (other_v == vend)
+			{
+				reach_end = true;
+				break;
 			}
 
 			++ve_iter;
@@ -480,6 +492,10 @@ bool find_geodesic_path(MyMesh &mesh, VPointer vstart, VPointer vend, std::vecto
 			trace_idx = path_trace[trace_idx];
 		}
 		std::reverse(path.begin(), path.end());
+
+
+
+
 		return true;
 	}
 	else 
@@ -490,7 +506,7 @@ bool find_geodesic_path(MyMesh &mesh, VPointer vstart, VPointer vend, std::vecto
 
 bool find_decal_boundary(MyMesh &mesh, OctreeType &octree, vcgRect3 &decal_rect, std::vector<VPointer> &decal_verts, std::vector<std::vector<VPointer>> &paths)
 {
-	const double max_dst = 0.5*(decal_rect[0] - decal_rect[1]).Norm();
+	const double max_dst = (decal_rect[0] - decal_rect[1]).Norm();
 	double min_dst;
 	decal_verts.resize(4);
 	for (int i = 0; i < 4; ++i) 
@@ -523,21 +539,18 @@ void merge_path(std::vector<std::vector<VPointer>> &paths, std::vector<VPointer>
 		path.insert(path.end(), p.begin(), p.end());
 }
 
-bool extract_decal_triangles(MyMesh &mesh, std::vector<std::vector<VPointer>> &boundaries, FPointer seed_trig, std::vector<FPointer> &trigs)
+bool extract_decal_triangles(MyMesh &mesh, std::vector<std::vector<VPointer>> &boundaries, FPointer seed_trig, std::vector<FPointer> &decal_trigs)
 {
-	auto is_boundary_face = [](FPointer f) -> bool
+	auto is_boundary_edge = [](EPointer e) -> bool
 	{
-		for (auto i = 0; i < 3; ++i)
-			if (f->cFEp(i)->Flags() & MyMesh::EdgeType::VISITED)
-				return true;
-		return false;
+		return e->Flags() & MyMesh::EdgeType::VISITED;
 	};
 
 	//propagate from the center triangle
 	std::deque<FPointer> queue;
 	seed_trig->Flags() |= MyMesh::FaceType::VISITED;
 	queue.push_back(seed_trig);
-	trigs.push_back(seed_trig);
+	decal_trigs.push_back(seed_trig);
 
 	for (auto fit = mesh.face.begin(); fit != mesh.face.end(); ++fit)
 		fit->Flags() = (fit->Flags() & ~MyMesh::FaceType::VISITED);
@@ -557,6 +570,7 @@ bool extract_decal_triangles(MyMesh &mesh, std::vector<std::vector<VPointer>> &b
 		e->Flags() |= MyMesh::EdgeType::VISITED;
 	}
 	
+	face::Pos<MyMesh::FaceType> pos;
 	while (!queue.empty())
 	{
 		FPointer face = queue.front();
@@ -564,21 +578,27 @@ bool extract_decal_triangles(MyMesh &mesh, std::vector<std::vector<VPointer>> &b
 		for (int i = 0; i < 3; ++i)
 		{
 			FPointer fadj = face->FFp(i);
-
-			if (fadj && !(fadj->cFlags() & MyMesh::FaceType::VISITED))
+			if (!fadj) continue;
+			EPointer e	= face->FEp(i);
+			bool is_visited = fadj->cFlags() & MyMesh::FaceType::VISITED;
+			if (!is_visited)
 			{
 				fadj->Flags() |= MyMesh::FaceType::VISITED;
-				trigs.push_back(fadj);
-				
-				//do no go across boundary 
-				if(!is_boundary_face(fadj))
+			
+				if (!is_boundary_edge(e)) 
+				{
+					decal_trigs.push_back(fadj);
 					queue.push_back(fadj);
+				}
 			}
 		}
 	}
 
 	for (auto fit = mesh.face.begin(); fit != mesh.face.end(); ++fit)
 		fit->Flags() = (fit->Flags() & ~MyMesh::FaceType::VISITED);
+
+	for (auto it = mesh.edge.begin(); it != mesh.edge.end(); ++it)
+		it->Flags() = (it->Flags() & ~MyMesh::EdgeType::VISITED);
 
 	return true;
 }
@@ -600,7 +620,11 @@ bool is_tri_candiate(FPointer tri, const vcg::Plane3d &plane, const vcg::Box3d &
 
 void construct_a_mesh(MyMesh &mesh, const std::vector<FPointer> &tris, MyMesh &new_mesh)
 {
-	std::unordered_map<VPointer, VPointer> vert_map;
+	for (auto &f : mesh.face)
+		f.ClearS();
+	for (auto &v : mesh.vert)
+		v.ClearS();
+
 	for (const FPointer &tri : tris)
 	{
 		for (auto i = 0; i < 3; ++i)
@@ -961,26 +985,6 @@ cv::Mat3b output_textured_rasterization(const cv::Size &size, const cv::Mat3b &t
 		}
 	}
 
-	//for (int i = 0; i < decal_rect.width; ++i)
-	//{
-	//	int px = i + decal_rect.x;
-	//	for (int j = 0; j < decal_rect.height; ++j)
-	//	{
-	//		int py = j + decal_rect.y;
-	//		
-	//		cv::Vec3f decal_pix = decal_img(i, j);
-	//		cvVec2 co = tex_coords(px, py);
-	//		co[1] = 1.0 - co[1];
-	//		int tex_ix = int((double)tex_size[0] * co[1]);
-	//		int tex_iy = int((double)tex_size[1] * co[0]);
-	//		if (tex_ix >= 0 && tex_ix < tex_size[0] && tex_iy >= 0 && tex_iy < tex_size[1])
-	//		{
-	//			cv::Vec3f tex_pix = tex_img(tex_ix, tex_iy);
-	//			textured_raserization_img(px, py) = 0.5*(tex_pix + decal_pix);
-	//		}
-	//	}
-	//}
-
 	return textured_raserization_img;
 }
 
@@ -990,6 +994,87 @@ size_t total_vertices(const std::vector<std::vector<VPointer>> &boundary)
 	for (int i = 0; i < boundary.size(); ++i)
 		cnt += boundary[i].size();
 	return cnt;
+}
+
+void debug_mesh_points(MyMesh &mesh, std::vector<VPointer> &points)
+{
+	vcg::Box3d bbox;
+	for (auto p : mesh.vert)
+		bbox.Add(p.cP());
+
+	vcgPoint3 dim = bbox.Dim();
+	cv::Mat3b mat(512, 512, cv::Vec3b(0, 0, 0));
+	auto transform = [&](vcgPoint3 &p)
+	{
+		vcgPoint3 p0 = (p - bbox.min);
+		p0.X() = p0.X() / dim.X();
+		p0.Y() = p0.Y() / dim.Y();
+		p0.Z() = p0.Z() / dim.Z();
+		p0 *= 512;
+		return cv::Point(p0.X(), p0.Z());
+	};
+
+	for (size_t i = 0; i < mesh.FN(); ++i)
+	{
+		auto color = cv::Vec3b(255, 0, 0);
+		FPointer t = &mesh.face[i];
+		cv::line(mat, transform(t->cP(0)), transform(t->cP(1)), color);
+		cv::line(mat, transform(t->cP(1)), transform(t->cP(2)), color);
+		cv::line(mat, transform(t->cP(2)), transform(t->cP(0)), color);
+	}
+
+	for (size_t i = 0; i < points.size(); ++i)
+	{
+		VPointer v0 = points[i];
+		auto color = cv::Vec3b(0, 255, 255);
+		cv::circle(mat, transform(v0->cP()), 5, color);
+	}
+
+	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\test_1.png", mat);
+}
+
+void debug_triangle_boundary(MyMesh &mesh, std::vector<FPointer> &decal_trigs, std::vector<std::vector<VPointer>> &boundary, EVectorX &vmap)
+{
+	std::vector<VPointer> bdr;
+	merge_path(boundary, bdr);
+	vcg::Box3d bbox;
+	for (auto p : mesh.vert)
+		bbox.Add(p.cP());
+
+	vcgPoint3 dim = bbox.Dim();
+	cv::Mat3b mat(2048, 2048, cv::Vec3b(0, 0, 0));
+	auto transform = [&](vcgPoint3 &p)
+	{
+		vcgPoint3 p0 = (p - bbox.min);
+		p0.X() = p0.X() / dim.X();
+		p0.Y() = p0.Y() / dim.Y();
+		p0.Z() = p0.Z() / dim.Z();
+		p0 *= 2048;
+		return cv::Point(p0.X(), p0.Y());
+	};
+	
+	for (size_t i =0 ; i < decal_trigs.size(); ++i)
+	{
+		auto color = cv::Vec3b(0, 255, 0);
+		FPointer t = decal_trigs[i];
+		cv::line(mat, transform(t->cP(0)), transform(t->cP(1)), color);
+		cv::line(mat, transform(t->cP(1)), transform(t->cP(2)), color);
+		cv::line(mat, transform(t->cP(2)), transform(t->cP(0)), color);
+	}
+
+	for (size_t i = 0; i < bdr.size(); ++i)
+	{
+		VPointer v0 = bdr[i];
+		VPointer v1 = bdr[(i + 1) % bdr.size()];
+		cv::Point p0 = transform(v0->cP());
+		cv::Point p1 = transform(v1->cP());
+		cv::Vec3b color(255, 0, 0);
+		if (vmap[vcg::tri::Index(mesh, v0)] == -1 || vmap[vcg::tri::Index(mesh, v1)] == -1)
+			color = cv::Vec3b(0, 0, 255);
+		cv::line(mat, p0, p1, color);
+	}
+
+	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\test.png", mat);
 }
 
 void parameterizre_decal(MyMesh &mesh, std::vector<FPointer> &decal_trigs, std::vector<std::vector<VPointer>> &boundary)
@@ -1007,6 +1092,10 @@ void parameterizre_decal(MyMesh &mesh, std::vector<FPointer> &decal_trigs, std::
 	EMatrixX F;	
 	EVectorX v_map;
 	mesh_matrix(mesh, decal_trigs, V, F, v_map);
+
+	debug_triangle_boundary(mesh, decal_trigs, boundary, v_map);
+
+	return;
 
 	size_t n_bdr_points = total_vertices(boundary);
 	EVectorX bnd(n_bdr_points);
@@ -1058,6 +1147,12 @@ void test_find_decal_region(MyMesh &mesh, string decal_rect_path)
 	std::vector<FPointer> decal_trigs;
 	extract_decal_triangles(mesh, paths, seed_tri, decal_trigs);
 	
+#if 0
+	MyMesh decal_mesh;
+	construct_a_mesh(mesh, decal_trigs, decal_mesh);
+	string export_file_path = "D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\test_decal_mesh.obj";
+	tri::io::Exporter<MyMesh>::Save(decal_mesh, export_file_path.c_str());
+#endif
 	parameterizre_decal(mesh, decal_trigs, paths);
 }
 
