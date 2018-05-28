@@ -17,8 +17,8 @@
 #include <igl/map_vertices_to_circle.h>
 #include <igl/list_to_matrix.h>
 
-
 #include <opencv2/core.hpp>
+#include <opencv2/photo.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -579,7 +579,7 @@ void generate_texture_coordinates(const std::vector<FPointer> &trigs, const EMat
 			{
 				int py = rect.y + iy;
 				//note: our unit is one pixel, therefore, choosing a big epsilon to make sure that each pixel belongs to a triangle
-				if (inside_triangle(img_trig_verts, cvPoint2((double)px, (double)py), L1, L2, L3, 0.9))
+				if (inside_triangle(img_trig_verts, cvPoint2((double)px, (double)py), L1, L2, L3, 1))
 				{
 					//cvVec2 tex((double)rand()/RAND_MAX, (double)rand()/RAND_MAX);
 					//cvVec2 tex = 1.0f/3.0f*(trig.tex_coords[0] + trig.tex_coords[1] + trig.tex_coords[2]);
@@ -593,56 +593,53 @@ void generate_texture_coordinates(const std::vector<FPointer> &trigs, const EMat
 	}
 }
 
-void test_draw_triangles_over_texture(cv::Mat1b &tex, const EMatrixX &F, const EMatrixXScalar &V_uv)
+void draw_texture_triangle_over_img(cv::Mat3b &tex, const EMatrixX &trigs, const EMatrixXScalar &V_uv, Scalar color)
 {
-	cv::Point trig_tex_coords[3];
+	cv::Point tri_coords[3];
 	int width = tex.size[0];
 	int height = tex.size[1];
 
-	for (auto i = 0; i < F.rows(); ++i)
+	for (size_t r = 0; r < trigs.rows(); ++r)
 	{
-		const EVectorX &tri = F.row(i);
 		for (auto i = 0; i < 3; ++i)
 		{
-			trig_tex_coords[i].x = int(V_uv(tri[i],0)* (double)width);
-			trig_tex_coords[i].y = int(V_uv(tri[i],1) * (double)height);
+			tri_coords[i].y = int(V_uv(trigs(r, i), 0) * (double)width);
+			tri_coords[i].x = int(V_uv(trigs(r, i), 1) * (double)height);
 		}
 
-		//cv::fillConvexPoly(tex, trig_tex_coords, 3, Scalar(255));
-
 		for (auto i = 0; i < 3; ++i)
-			cv::line(tex, trig_tex_coords[i], trig_tex_coords[(i + 1) % 3], Scalar(255, 0, 0), 1);
+			cv::line(tex, tri_coords[i], tri_coords[(i + 1) % 3], color, 1, cv::LINE_4);
 	}
 }
 
-void test_draw_triangles_over_texture(cv::Mat1b &tex, const std::vector<LocalDecalTriangle> &trigs)
+void draw_texture_triangle_over_img(cv::Mat &tex, const std::vector<FPointer> &trigs, Scalar color)
 {
-	cv::Point trig_tex_coords[3];
+	cvVec2	tri_coords[3];
+	cv::Point tri_points[3];
 	int width = tex.size[0];
 	int height = tex.size[1];
 
-	for (const LocalDecalTriangle &trig : trigs)
+	for (auto t : trigs)
 	{
+		triangle_texture_coords(t, tri_coords);
 		for (auto i = 0; i < 3; ++i)
 		{
-			trig_tex_coords[i].x = int(trig.tex_coords[i][0] * (double)width);
-			trig_tex_coords[i].y = int((1.0 - trig.tex_coords[i][1]) * (double)height);
+			tri_points[i].x = tri_coords[i][0] * width;
+			tri_points[i].y = (1.0 - tri_coords[i][1])* height;
 		}
-
-		cv::fillConvexPoly(tex, trig_tex_coords, 3, Scalar(255));
-
-		//for (auto i = 0; i < 3; ++i)
-		//	cv::line(tex, trig_tex_coords[i], trig_tex_coords[(i + 1) % 3], Scalar(255, 0, 0), 1);
+		for (auto i = 0; i < 3; ++i)
+			cv::line(tex, tri_points[i], tri_points[(i + 1) % 3], color, 1, cv::LINE_4);
 	}
 }
 
-cv::Mat3b test_draw_triangles_over_image(const cv::Mat3b &img, const std::vector<LocalDecalTriangle> &trigs)
+
+cv::Mat3b test_draw_triangles_over_image(const cv::Mat &img, const std::vector<LocalDecalTriangle> &trigs)
 {
 	cv::Point tri_coords[3];
 	int width = img.size[0];
 	int height = img.size[1];
 
-	cv::Mat3b img_out = img.clone();
+	cv::Mat img_out = img.clone();
 
 	for (const LocalDecalTriangle &trig : trigs)
 	{
@@ -950,6 +947,11 @@ bool find_decal_area(MyMesh &mesh, vcgRect3 decal_rect,
 #endif
 	return true;
 }
+cv::Point select_seed_point_texture_space(const cv::Mat1b &mapping)
+{
+	//to do
+	return cv::Point(0, 0);
+}
 
 int main(int argc, char **argv)
 {
@@ -1029,7 +1031,7 @@ int main(int argc, char **argv)
 #endif
 
 	cv::Mat3b mod_tex_img = tex_img.clone();
-	cv::Mat1b mask_tex_img = cv::Mat1b(mod_tex_img.size[0], mod_tex_img.size[1]);
+	cv::Mat1b mask_tex_img = cv::Mat1b(mod_tex_img.size[0], mod_tex_img.size[1], uchar(0));
 	cv::Mat3b textured_decal_img = cv::Mat3b(size.width, size.height);
 	for (int i = 0; i < decal_rect.width; ++i)
 	{
@@ -1043,7 +1045,7 @@ int main(int argc, char **argv)
 			int tex_iy = int((double)tex_size[1] * co[0]);
 			if (tex_ix >= 0 && tex_ix < tex_size[0] && tex_iy >= 0 && tex_iy < tex_size[1])
 			{
-				cv::Vec3f decal_pix = decal_img(i,j);
+				cv::Vec3f decal_pix = decal_img(decal_rect.width-i-1,j);
 				const double threshold = 0.0;
 				if (true/*decal_pix[0] > threshold && decal_pix[1] > threshold && decal_pix[2] > threshold*/)
 				{
@@ -1052,15 +1054,38 @@ int main(int argc, char **argv)
 					//tex_pix = 0.5f * tex_pix + 0.5f*decal_pix;
 					mod_tex_img(tex_ix, tex_iy) = decal_pix;
 					//mod_tex_img(tex_ix, tex_iy) = cv::Vec3b(0, 0, 255);
-					mask_tex_img(tex_ix, tex_iy) = 255;
+					mask_tex_img(tex_ix, tex_iy) = uchar(255);
 				}
 			}
 		}
 	}
 
+	cv::Mat1b mask_triangle_tex_img = cv::Mat1b(tex_img.size[0], tex_img.size[1], uchar(0));
+	cv::Scalar color(255, 255,255);
+	draw_texture_triangle_over_img(mask_triangle_tex_img, decal_trigs, color);
+	cv::Point seed_pnt = select_seed_point_texture_space(mask_triangle_tex_img);
+	cv::Mat1b mask_inv = mask_triangle_tex_img.clone();
+	cv::floodFill(mask_inv, seed_pnt, 255);
+	mask_inv = 255 - mask_inv;
+	cv::bitwise_or(mask_triangle_tex_img, mask_inv, mask_triangle_tex_img);
+	
+	cv::Mat strel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
+	cv::dilate(mask_triangle_tex_img, mask_triangle_tex_img, strel);
+
+	mask_triangle_tex_img = mask_triangle_tex_img - mask_tex_img;
+	
+	cv::inpaint(mod_tex_img, mask_triangle_tex_img, mod_tex_img, 5, cv::INPAINT_NS);
+
+
+	//cv::Mat strel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(4, 4));
+	//cv::Mat1b mask_tex_img_1(mask_tex_img.rows, mask_tex_img.cols);
+	//cv::morphologyEx(mask_tex_img, mask_tex_img_1, cv::MORPH_CLOSE, strel);
+
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\textured_decal.png", textured_decal_img);
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\laxsquadT_mBBB_xLA4_0430.1001.jpg", mod_tex_img);
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask.png", mask_tex_img);
+	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_1.png", mask_tex_img_1);
+	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_triangle.png", mask_triangle_tex_img);
 
 	return 0;
 }
