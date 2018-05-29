@@ -75,26 +75,30 @@ private:
 	MyMesh		m_mesh;
 	cv::Mat3b	m_decal_img;
 	cv::Mat3b	m_tex_img;
+	cv::Size	m_mapping_size; //the resolution of 2D mapping of decal area. The higher the value is, the less tiny gaps in the mapping there are
+	double		m_paint_percent; //how many percent of m_mapping_size that the decal image takes up
 public:
+	DecalPainter();
 	void paint_decal();
 	bool set_mesh(std::string path);
 	bool set_mesh_texture(std::string path);
-	void set_decal_anchor_points(std::array<vcgPoint3, 4> points);
-	bool set_decal_anchor_points(std::string path);
+	void set_decal_anchor_corners(std::array<vcgPoint3, 4> points);
+	bool set_decal_anchor_corners(std::string path);
 	bool set_decal_image(std::string path);
 	bool is_file_exist(string path);
+	void set_mapping_size(cv::Size size, double paint_size = 1.0);
 private:
 	void mesh_matrix(MyMesh &mesh, EMatrixXScalar &V, EMatrixX &F);
 	void mesh_matrix(MyMesh &mesh, const std::vector<FPointer> &trigs, EMatrixXScalar &V, EMatrixX &F, EVectorX &vmap);
 	double calc_path_len(const std::vector<VPointer> &path);
+
 	void construct_uv_rect_boundary(
 		const std::vector<EVector2Scalar> &corners,
 		const std::vector<std::vector<VPointer>> &paths,
 		std::vector<EMatrixXScalar> &uvpaths);
 
-	void parameterize_mesh_to_rectangular_domain(const EMatrixXScalar &V, const EMatrixX &F, EMatrixXScalar &V_uv);
-	CvRect triangle_rect(const cvPoint2 coords[3]);
-	bool inside_triangle(const cvPoint2 trig_coords[3], const cvPoint2 &p, double &L1, double &L2, double &L3, const double EPSILON);
+	CvRect triangle_bounding_rect(const cvPoint2 coords[3]);
+	bool is_inside_triangle(const cvPoint2 trig_coords[3], const cvPoint2 &p, double &L1, double &L2, double &L3, const double EPSILON);
 	bool import_decal_rectangle(std::string file_path, vcgRect3 &decal_rect);
 	VPointer edge_other_vert(MyMesh::EdgePointer e, VPointer v);
 	EPointer edge_from_verts(VPointer v0, VPointer v1);
@@ -102,28 +106,34 @@ private:
 	bool find_decal_boundary(MyMesh &mesh, OctreeType &octree, vcgRect3 &decal_rect, std::vector<VPointer> &decal_verts, std::vector<std::vector<VPointer>> &paths);
 	void merge_path(std::vector<std::vector<VPointer>> &paths, std::vector<VPointer> &path);
 	bool extract_decal_triangles(MyMesh &mesh, std::vector<std::vector<VPointer>> &boundaries, FPointer seed_trig, std::vector<FPointer> &decal_trigs);
-	bool is_tri_candiate(FPointer tri, const vcg::Plane3d &plane, const vcg::Box3d &box, const double &furthest_dist);
 	void construct_a_mesh(MyMesh &mesh, const std::vector<FPointer> &tris, MyMesh &new_mesh);
 	FPointer find_seed_triangle(MyMesh &mesh, OctreeType &octree, vcgRect3 &decal_rect);
 	void triangle_texture_coords(FPointer trig, cvVec2 tex_cos[3]);
 	void generate_texture_coordinates(const std::vector<FPointer> &trigs, const EMatrixX &F, const EMatrixXScalar &V_uv, const cv::Size2i &img_size, cv::Mat2f &tex_coords);
+	
+	cv::Point select_seed_point_texture_space(const cv::Mat1b &mapping);
+	cv::Mat1b generate_decal_area_in_texture_space(const std::vector<FPointer> &decal_trigs, cv::MatSize texture_size);
+	
+	void fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::Mat1b &blended_mask, cv::Mat3b &tex_img);
+	void blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat &decal_img,
+							cv::Mat3b &blended_tex_img, cv::Mat1b &blend_mask);
 
-	void draw_texture_triangle_over_img(cv::Mat3b &tex, const EMatrixX &trigs, const EMatrixXScalar &V_uv, Scalar color);
 	void draw_texture_triangle_over_img(cv::Mat &tex, const std::vector<FPointer> &trigs, Scalar color);
-	void test_draw_segments(cv::Mat3b &mat, const std::vector<EMatrixXScalar> &paths);
 	cv::Mat3b generate_background_image(cv::Size size, cv::Vec3b mean_color, cv::Vec3b variance);
 	cv::Vec3b find_background_color(const cv::Mat3b &img);
 	cv::Mat3b build_textured_rasterization(const cv::Size &size, const cv::Mat3b &tex_img, const cv::Mat3b &decal_img, cv::Rect2i decal_rect, const cv::Mat2f  &tex_coords);
-	cv::Mat3b output_textured_rasterization(const cv::Size &size, const cv::Mat3b &tex_img, const cv::Mat3b &decal_img, cv::Rect2i decal_rect, const cv::Mat2f  &tex_coords);
 	size_t total_vertices(const std::vector<std::vector<VPointer>> &boundary);
+#if _DEBUG
+	void test_draw_segments(cv::Mat3b &mat, const std::vector<EMatrixXScalar> &paths);
+	cv::Mat3b output_textured_rasterization(const cv::Size &size, const cv::Mat3b &tex_img, const cv::Mat3b &decal_img, cv::Rect2i decal_rect, const cv::Mat2f  &tex_coords);
 	void debug_mesh_points(MyMesh &mesh, std::vector<VPointer> &points);
 	void debug_triangle_boundary(MyMesh &mesh, std::vector<FPointer> &decal_trigs, std::vector<std::vector<VPointer>> &boundary, EVectorX &vmap);
+#endif
 	void parameterizre_decal_rect(MyMesh &mesh,
 		const std::vector<FPointer> &decal_trigs,
 		const std::vector<std::vector<VPointer>> &boundary,
 		EMatrixX &F, EMatrixXScalar &V_uv);
-	bool find_decal_area(MyMesh &mesh, vcgRect3 decal_rect,
+	bool find_3D_mesh_decal_area(MyMesh &mesh, vcgRect3 decal_rect,
 		std::vector<FPointer> &decal_trigs, std::vector<std::vector<VPointer>> &boundary);
-	cv::Point select_seed_point_texture_space(const cv::Mat1b &mapping);
 };
 #endif

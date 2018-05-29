@@ -1,6 +1,11 @@
 
 #include "DecalPainter.h"
 
+DecalPainter::DecalPainter()
+	: m_mapping_size(2*1024, 2*2014)
+	, m_paint_percent(1.0)
+{}
+
 void DecalPainter::mesh_matrix(MyMesh &mesh, EMatrixXScalar &V, EMatrixX &F)
 {
 	//collect all boundary vertices
@@ -91,22 +96,7 @@ void DecalPainter::construct_uv_rect_boundary(const std::vector<EVector2Scalar> 
 	}
 }
 
-void DecalPainter::parameterize_mesh_to_rectangular_domain(const EMatrixXScalar &V, const EMatrixX &F, EMatrixXScalar &V_uv)
-{
-	EVectorX bnd;
-	igl::boundary_loop(F, bnd);
-
-	// Map the boundary to a circle, preserving edge proportions
-	EMatrixXScalar bnd_uv;
-	igl::map_vertices_to_circle(V, bnd, bnd_uv);
-
-	// Harmonic parametrization for the internal vertices
-	igl::harmonic(V, F, bnd, bnd_uv, 1, V_uv);
-
-	V_uv = 0.5 * (1. + V_uv.array());
-}
-
-CvRect DecalPainter::triangle_rect(const cvPoint2 coords[3])
+CvRect DecalPainter::triangle_bounding_rect(const cvPoint2 coords[3])
 {
 	double xmin, xmax, ymin, ymax;
 	xmin = xmax = coords[0].x;
@@ -127,7 +117,7 @@ CvRect DecalPainter::triangle_rect(const cvPoint2 coords[3])
 	return CvRect(xmin, ymin, xmax - xmin + 1, ymax - ymin + 1);
 }
 
-bool DecalPainter::inside_triangle(const cvPoint2 trig_coords[3], const cvPoint2 &p, double &L1, double &L2, double &L3, const double EPSILON)
+bool DecalPainter::is_inside_triangle(const cvPoint2 trig_coords[3], const cvPoint2 &p, double &L1, double &L2, double &L3, const double EPSILON)
 {
 	//const double EPSILON = double(0.1);
 	double x1 = trig_coords[0].x;
@@ -372,21 +362,6 @@ bool DecalPainter::extract_decal_triangles(MyMesh &mesh, std::vector<std::vector
 	return true;
 }
 
-bool DecalPainter::is_tri_candiate(FPointer tri, const vcg::Plane3d &plane, const vcg::Box3d &box, const double &furthest_dist)
-{
-	double dst = std::abs(vcg::SignedDistancePlanePoint(plane, vcg::Barycenter(*tri)));
-	if (dst > furthest_dist)
-		return false;
-	
-	for (int i = 0; i < 3; ++i)
-	{
-		vcgPoint3 proj_point = plane.Projection(tri->V(i)->cP());
-		if (box.IsIn(proj_point))
-			return true;
-	}
-	return false;
-}
-
 void DecalPainter::construct_a_mesh(MyMesh &mesh, const std::vector<FPointer> &tris, MyMesh &new_mesh)
 {
 	for (auto &f : mesh.face)
@@ -462,7 +437,7 @@ void DecalPainter::generate_texture_coordinates(const std::vector<FPointer> &tri
 			img_trig_verts[vi].y = V_uv(trig[vi],1) * (double)(img_size.height-1);
 		}
 
-		CvRect rect = triangle_rect(img_trig_verts);
+		CvRect rect = triangle_bounding_rect(img_trig_verts);
 		double L1, L2, L3;
 		for (int ix = 0; ix < rect.width; ix++)
 		{
@@ -471,7 +446,7 @@ void DecalPainter::generate_texture_coordinates(const std::vector<FPointer> &tri
 			{
 				int py = rect.y + iy;
 				//note: our unit is one pixel, therefore, choosing a big epsilon to make sure that each pixel belongs to a triangle
-				if (inside_triangle(img_trig_verts, cvPoint2((double)px, (double)py), L1, L2, L3, 1))
+				if (is_inside_triangle(img_trig_verts, cvPoint2((double)px, (double)py), L1, L2, L3, 1))
 				{
 					//cvVec2 tex((double)rand()/RAND_MAX, (double)rand()/RAND_MAX);
 					//cvVec2 tex = 1.0f/3.0f*(trig.tex_coords[0] + trig.tex_coords[1] + trig.tex_coords[2]);
@@ -485,23 +460,74 @@ void DecalPainter::generate_texture_coordinates(const std::vector<FPointer> &tri
 	}
 }
 
-void DecalPainter::draw_texture_triangle_over_img(cv::Mat3b &tex, const EMatrixX &trigs, const EMatrixXScalar &V_uv, Scalar color)
+cv::Point DecalPainter::select_seed_point_texture_space(const cv::Mat1b &mapping)
 {
-	cv::Point tri_coords[3];
-	int width = tex.size[0];
-	int height = tex.size[1];
+	//to do
+	return cv::Point(0, 0);
+}
 
-	for (size_t r = 0; r < trigs.rows(); ++r)
+cv::Mat1b DecalPainter::generate_decal_area_in_texture_space(const std::vector<FPointer> &decal_trigs, cv::MatSize texture_size)
+{
+	cv::Mat1b mask_triangle_tex_img = cv::Mat1b(texture_size[0], texture_size[1], uchar(0));
+	cv::Scalar color(255, 255, 255);
+	draw_texture_triangle_over_img(mask_triangle_tex_img, decal_trigs, color);
+	cv::Point seed_pnt = select_seed_point_texture_space(mask_triangle_tex_img);
+	cv::Mat1b mask_inv = mask_triangle_tex_img.clone();
+	cv::floodFill(mask_inv, seed_pnt, 255);
+	mask_inv = 255 - mask_inv;
+	cv::bitwise_or(mask_triangle_tex_img, mask_inv, mask_triangle_tex_img);
+
+	cv::Mat strel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
+	cv::dilate(mask_triangle_tex_img, mask_triangle_tex_img, strel);
+}
+
+void DecalPainter::fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::Mat1b &blended_mask, cv::Mat3b &tex_img)
+{
+	cv::Mat1b mask_triangle_tex_img = generate_decal_area_in_texture_space(decal_trigs, m_tex_img.size);
+	mask_triangle_tex_img = mask_triangle_tex_img - blended_mask;
+
+	cv::inpaint(tex_img, mask_triangle_tex_img, tex_img, 5, cv::INPAINT_NS);
+}
+
+void DecalPainter::blend_decal_with_texture(
+	const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat &decal_img, 
+	cv::Mat3b &blended_tex_img, cv::Mat1b &blend_mask)
+{
+	blended_tex_img = m_tex_img.clone();
+	cv::MatSize tex_size	= m_tex_img.size;
+	blend_mask = cv::Mat1b(blended_tex_img.size[0], blended_tex_img.size[1], uchar(0));
+	cv::Mat3b	textured_decal_img = cv::Mat3b(blend_rect.width, blend_rect.height);
+
+	for (int i = 0; i < blend_rect.width; ++i)
 	{
-		for (auto i = 0; i < 3; ++i)
+		int px = i + blend_rect.x;
+		for (int j = 0; j < blend_rect.height; ++j)
 		{
-			tri_coords[i].y = int(V_uv(trigs(r, i), 0) * (double)width);
-			tri_coords[i].x = int(V_uv(trigs(r, i), 1) * (double)height);
+			int py = j + blend_rect.y;
+			cvVec2 co = tex_coords(px, py);
+			co[1] = 1.0 - co[1];
+			int tex_ix = int((double)tex_size[0] * co[1]);
+			int tex_iy = int((double)tex_size[1] * co[0]);
+			if (tex_ix >= 0 && tex_ix < tex_size[0] && tex_iy >= 0 && tex_iy < tex_size[1])
+			{
+				cv::Vec3f decal_pix = decal_img.at<cv::Vec3f>(blend_rect.width - i - 1, j);
+				if (true/*decal_pix[0] > threshold && decal_pix[1] > threshold && decal_pix[2] > threshold*/)
+				{
+					cv::Vec3f tex_pix = m_tex_img(tex_ix, tex_iy);
+					textured_decal_img(px, py) = tex_pix;
+					blended_tex_img(tex_ix, tex_iy) = decal_pix;
+					blend_mask(tex_ix, tex_iy) = uchar(255);
+				}
+			}
 		}
-
-		for (auto i = 0; i < 3; ++i)
-			cv::line(tex, tri_coords[i], tri_coords[(i + 1) % 3], color, 1, cv::LINE_4);
 	}
+#if 0
+	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\textured_decal.png", textured_decal_img);
+	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\laxsquadT_mBBB_xLA4_0430.1001.jpg", mod_tex_img);
+	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask.png", mask_tex_img);
+	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_1.png", mask_tex_img_1);
+	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_triangle.png", mask_triangle_tex_img);
+#endif
 }
 
 void DecalPainter::draw_texture_triangle_over_img(cv::Mat &tex, const std::vector<FPointer> &trigs, Scalar color)
@@ -521,23 +547,6 @@ void DecalPainter::draw_texture_triangle_over_img(cv::Mat &tex, const std::vecto
 		}
 		for (auto i = 0; i < 3; ++i)
 			cv::line(tex, tri_points[i], tri_points[(i + 1) % 3], color, 1, cv::LINE_4);
-	}
-}
-
-void DecalPainter::test_draw_segments(cv::Mat3b &mat, const std::vector<EMatrixXScalar> &paths)
-{
-	int width = mat.cols;
-	int height = mat.rows;
-
-	for (const EMatrixXScalar &path : paths)
-	{
-		size_t npoints = path.rows();
-		for (int i = 0; i < npoints - 1; ++i)
-		{
-			cv::Point p0(path(i,0) * width, path(i,1) * height);
-			cv::Point p1(path(i+1,0) * width, path(i+1,1) * height);
-			cv::line(mat, p0, p1, Scalar(255, 255, 255), 1);
-		}
 	}
 }
 
@@ -605,6 +614,34 @@ cv::Mat3b DecalPainter::build_textured_rasterization(const cv::Size &size, const
 	return textured_raserization_img;
 }
 
+
+size_t DecalPainter::total_vertices(const std::vector<std::vector<VPointer>> &boundary)
+{
+	size_t cnt = 0;
+	for (int i = 0; i < boundary.size(); ++i)
+		cnt += boundary[i].size();
+	return cnt;
+}
+
+#ifdef _DEBUG
+
+void DecalPainter::test_draw_segments(cv::Mat3b &mat, const std::vector<EMatrixXScalar> &paths)
+{
+	int width = mat.cols;
+	int height = mat.rows;
+
+	for (const EMatrixXScalar &path : paths)
+	{
+		size_t npoints = path.rows();
+		for (int i = 0; i < npoints - 1; ++i)
+		{
+			cv::Point p0(path(i, 0) * width, path(i, 1) * height);
+			cv::Point p1(path(i + 1, 0) * width, path(i + 1, 1) * height);
+			cv::line(mat, p0, p1, Scalar(255, 255, 255), 1);
+		}
+	}
+}
+
 cv::Mat3b DecalPainter::output_textured_rasterization(const cv::Size &size, const cv::Mat3b &tex_img, const cv::Mat3b &decal_img, cv::Rect2i decal_rect, const cv::Mat2f &tex_coords)
 {
 	const cv::MatSize &tex_size = tex_img.size;
@@ -628,13 +665,6 @@ cv::Mat3b DecalPainter::output_textured_rasterization(const cv::Size &size, cons
 	return textured_raserization_img;
 }
 
-size_t DecalPainter::total_vertices(const std::vector<std::vector<VPointer>> &boundary)
-{
-	size_t cnt = 0;
-	for (int i = 0; i < boundary.size(); ++i)
-		cnt += boundary[i].size();
-	return cnt;
-}
 
 void DecalPainter::debug_mesh_points(MyMesh &mesh, std::vector<VPointer> &points)
 {
@@ -716,6 +746,7 @@ void DecalPainter::debug_triangle_boundary(MyMesh &mesh, std::vector<FPointer> &
 
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\test.png", mat);
 }
+#endif
 
 void DecalPainter::parameterizre_decal_rect(MyMesh &mesh, const std::vector<FPointer> &decal_trigs, const std::vector<std::vector<VPointer>> &boundary, EMatrixX &F, EMatrixXScalar &V_uv)
 {
@@ -731,8 +762,6 @@ void DecalPainter::parameterizre_decal_rect(MyMesh &mesh, const std::vector<FPoi
 	EMatrixXScalar V;
 	EVectorX v_map;
 	mesh_matrix(mesh, decal_trigs, V, F, v_map);
-
-	//debug_triangle_boundary(mesh, decal_trigs, boundary, v_map);
 
 	size_t n_bdr_points = total_vertices(boundary);
 	EVectorX bnd(n_bdr_points);
@@ -759,7 +788,7 @@ void DecalPainter::parameterizre_decal_rect(MyMesh &mesh, const std::vector<FPoi
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\harmonic_parameterization.png", img);
 }
 
-bool DecalPainter::find_decal_area(MyMesh &mesh, vcgRect3 decal_rect, std::vector<FPointer> &decal_trigs, std::vector<std::vector<VPointer>> &boundary)
+bool DecalPainter::find_3D_mesh_decal_area(MyMesh &mesh, vcgRect3 decal_rect, std::vector<FPointer> &decal_trigs, std::vector<std::vector<VPointer>> &boundary)
 {
 	typedef vcg::Octree<MyMesh::VertexType, double> OctreeType;
 	OctreeType octree;
@@ -792,36 +821,29 @@ bool DecalPainter::find_decal_area(MyMesh &mesh, vcgRect3 decal_rect, std::vecto
 	return true;
 }
 
-cv::Point DecalPainter::select_seed_point_texture_space(const cv::Mat1b &mapping)
-{
-	//to do
-	return cv::Point(0, 0);
-}
-
 void DecalPainter::paint_decal()
 {
 	//read texture image
-	cv::Size2i		size(1024 * 2, 1024 * 2);
-	cv::Size2i		decal_size(static_cast<int>(size.width), static_cast<int>(size.height));
-	cv::Point2i		decal_pos(static_cast<int>(0.5*(size.width - decal_size.width)), static_cast<int>(0.5*(size.height - decal_size.height)));
-	cv::Rect2i		decal_rect(decal_pos.x, decal_pos.y, decal_size.width, decal_size.height);
+	cv::Size2i		paint_size(static_cast<int>(m_paint_percent*m_mapping_size.width), static_cast<int>(m_paint_percent*m_mapping_size.height));
+	cv::Point2i		decal_pos(static_cast<int>(0.5*(m_mapping_size.width - paint_size.width)), static_cast<int>(0.5*(m_mapping_size.height - paint_size.height)));
+	cv::Rect2i		decal_rect(decal_pos.x, decal_pos.y, paint_size.width, paint_size.height);
 
 	const cv::MatSize &tex_size = m_tex_img.size;
 
 	cv::flip(m_decal_img, m_decal_img, 1);
 	cv::rotate(m_decal_img, m_decal_img, cv::ROTATE_90_CLOCKWISE);
-	cv::resize(m_decal_img, m_decal_img, decal_size, 0, 0, INTER_AREA);
+	cv::resize(m_decal_img, m_decal_img, paint_size, 0, 0, INTER_AREA);
 
 	std::vector<FPointer> decal_trigs;
 	std::vector<std::vector<VPointer>> rect_boundary;
-	find_decal_area(m_mesh, m_decal_anchor_corners, decal_trigs, rect_boundary);
+	find_3D_mesh_decal_area(m_mesh, m_decal_anchor_corners, decal_trigs, rect_boundary);
 
 	EMatrixX F;
 	EMatrixXScalar V_uv;
 	parameterizre_decal_rect(m_mesh, decal_trigs, rect_boundary, F, V_uv);
 
 	cv::Mat2f  tex_coords;
-	generate_texture_coordinates(decal_trigs, F, V_uv, size, tex_coords);
+	generate_texture_coordinates(decal_trigs, F, V_uv, m_mapping_size, tex_coords);
 
 #if 0
 	cv::Mat1b tex_img_triangle = cv::Mat1b(tex_img.size[0], tex_img.size[1]);
@@ -859,9 +881,14 @@ void DecalPainter::paint_decal()
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\make_up_bacground_image.png", bg_img);
 #endif
 
+	cv::Mat3b mod_tex_img;
+	cv::Mat1b blended_mask;
+	blend_decal_with_texture(m_tex_img, tex_coords, decal_rect, m_decal_img, mod_tex_img, blended_mask);
+
+#if 0
 	cv::Mat3b mod_tex_img = m_tex_img.clone();
 	cv::Mat1b mask_tex_img = cv::Mat1b(mod_tex_img.size[0], mod_tex_img.size[1], uchar(0));
-	cv::Mat3b textured_decal_img = cv::Mat3b(size.width, size.height);
+	cv::Mat3b textured_decal_img = cv::Mat3b(paint_size.width, paint_size.height);
 	for (int i = 0; i < decal_rect.width; ++i)
 	{
 		int px = i + decal_rect.x;
@@ -880,9 +907,7 @@ void DecalPainter::paint_decal()
 				{
 					cv::Vec3f tex_pix = m_tex_img(tex_ix, tex_iy);
 					textured_decal_img(px, py) = tex_pix;
-					//tex_pix = 0.5f * tex_pix + 0.5f*decal_pix;
 					mod_tex_img(tex_ix, tex_iy) = decal_pix;
-					//mod_tex_img(tex_ix, tex_iy) = cv::Vec3b(0, 0, 255);
 					mask_tex_img(tex_ix, tex_iy) = uchar(255);
 				}
 			}
@@ -910,6 +935,7 @@ void DecalPainter::paint_decal()
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask.png", mask_tex_img);
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_1.png", mask_tex_img_1);
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_triangle.png", mask_triangle_tex_img);
+#endif
 }
 
 bool DecalPainter::set_mesh(std::string path)
@@ -929,12 +955,12 @@ bool DecalPainter::set_mesh_texture(std::string path)
 	return true;
 }
 
-void DecalPainter::set_decal_anchor_points(std::array<vcgPoint3, 4> points)
+void DecalPainter::set_decal_anchor_corners(std::array<vcgPoint3, 4> points)
 {
 	m_decal_anchor_corners = points;
 }
 
-bool DecalPainter::set_decal_anchor_points(std::string path)
+bool DecalPainter::set_decal_anchor_corners(std::string path)
 {
 	return import_decal_rectangle(path, m_decal_anchor_corners);
 }
@@ -957,6 +983,13 @@ bool DecalPainter::is_file_exist(string path)
 	return true;
 }
 
+void DecalPainter::set_mapping_size(cv::Size size, double paint_percent /*= 1.0*/)
+{
+	assert(paint_percent > 0 && paint_percent <= 1.0);
+	m_mapping_size = size;
+	m_paint_percent = paint_percent;
+}
+
 int main(int argc, char **argv)
 {
 	DecalPainter dpainter;
@@ -968,7 +1001,7 @@ int main(int argc, char **argv)
 	dpainter.set_mesh(mesh_path);
 	dpainter.set_mesh_texture(texture_img_path);
 
-	dpainter.set_decal_anchor_points(decal_rect_file_path);
+	dpainter.set_decal_anchor_corners(decal_rect_file_path);
 	dpainter.set_decal_image(decal_img_path);
 
 	dpainter.paint_decal();
