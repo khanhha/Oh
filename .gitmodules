@@ -1,0 +1,6 @@
+[submodule "3rdParty/libigl"]
+	path = 3rdParty/libigl
+	url = ../../libigl/libigl.git
+[submodule "3rdParty/vcglib"]
+	path = 3rdParty/vcglib
+	url = ../../cnr-isti-vclab/vcglib.git
