@@ -73,10 +73,14 @@ public:
 	{
 		NO_ERROR = 0,
 		CANNOT_FIND_A_CLOSED_BOUNDARY = 1 << 1,
-		CANNOT_FIND_A_SEED_TRIANGLE_INSIDE_CLOSED_BDR = 1 << 2
+		CANNOT_FIND_A_SEED_TRIANGLE_INSIDE_CLOSED_BDR = 1 << 2,
+		INVALID_DATA = 1 << 3
 	};
 public:
 	DecalPainter();
+	std::string error_string(int error);
+
+	bool check_valid_data();
 	int paint_decal(cv::Mat3b &painted_texture);
 	int erase_decal(cv::Mat3b &erased_texture, cv::Rect2d bgr_rect = cv::Rect2d(0.1, 0.1, 0.1, 0.1));
 	bool set_mesh(std::string path);
@@ -114,7 +118,7 @@ private:
 	void triangle_texture_coords(FPointer trig, cvVec2 tex_cos[3]);
 	void generate_texture_coordinates(const std::vector<FPointer> &trigs, const EMatrixX &F, const EMatrixXScalar &V_uv, const cv::Size2i &img_size, cv::Mat2f &tex_coords);
 	
-	void fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::Mat1b &blended_mask, cv::Mat3b &tex_img);
+	void fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::Mat1b &blended_mask, const cv::Mat3b &blended_tex_img, cv::Mat3b &fixed_tex_img);
 	void blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat3b &decal_img,
 							cv::Mat3b &blended_tex_img, cv::Mat1b &blend_mask);
 

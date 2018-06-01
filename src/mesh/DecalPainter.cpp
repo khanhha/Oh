@@ -2,9 +2,47 @@
 #include "DecalPainter.h"
 
 DecalPainter::DecalPainter()
-	: m_mapping_size(2*1024, 2* 1024)
+	: m_mapping_size(4*1024, 4* 1024)
 	, m_paint_percent(1.0)
 {}
+
+std::string DecalPainter::error_string(int error)
+{
+	string error_str;
+	if (error & CANNOT_FIND_A_CLOSED_BOUNDARY)
+		error_str += "CANNOT_FIND_A_CLOSED_BOUNDARY.";
+
+	if (error & CANNOT_FIND_A_SEED_TRIANGLE_INSIDE_CLOSED_BDR)
+		error_str += "CANNOT_FIND_A_SEED_TRIANGLE_INSIDE_CLOSED_BDR";
+
+	if (error & INVALID_DATA)
+		error_str += "INVALID_DATA";
+	
+	return  error_str;
+}
+
+bool DecalPainter::check_valid_data()
+{
+	if (m_decal_img.empty())
+	{
+		std::cerr << "error empty decal image" << std::endl;
+		return false;
+	}
+
+	if (m_tex_img.empty())
+	{
+		std::cerr << "error empty texture image" << std::endl;
+		return false;
+	}
+
+	if (m_mesh.IsEmpty())
+	{
+		std::cerr << "error empty  mesh" << std::endl;
+		return false;
+	}
+
+	return true;
+}
 
 CvRect DecalPainter::triangle_bounding_rect(const cvPoint2 coords[3])
 {
@@ -404,7 +442,7 @@ int DecalPainter::find_3D_mesh_decal_area(MyMesh &mesh, vcgRect3 decal_rect, std
 	string export_file_path = "D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\test_decal_mesh.obj";
 	tri::io::Exporter<MyMesh>::Save(decal_mesh, export_file_path.c_str());
 #endif
-	return true;
+	return err;
 }
 
 /*generate UV rectangular coordinates for the closed boundary
@@ -514,7 +552,7 @@ void DecalPainter::draw_texture_triangle_over_img(cv::Mat1b &tex, const std::vec
 	}
 }
 
-void DecalPainter::fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::Mat1b &blended_mask, cv::Mat3b &tex_img)
+void DecalPainter::fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::Mat1b &blended_mask, const cv::Mat3b &blended_tex_img, cv::Mat3b &fixed_tex_img)
 {
 	cv::Mat1b mask_triangle_tex_img = cv::Mat1b(m_tex_img.size[0], m_tex_img.size[1], uchar(0));
 	cv::Scalar color(255, 255, 255);
@@ -525,9 +563,10 @@ void DecalPainter::fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::M
 
 	/*find gaps mask*/
 	mask_triangle_tex_img = mask_triangle_tex_img - blended_mask;
+	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\gaps.png", mask_triangle_tex_img);
 
 	/*fill gaps*/
-	cv::inpaint(tex_img, mask_triangle_tex_img, tex_img, 5, cv::INPAINT_NS);
+	cv::inpaint(blended_tex_img, mask_triangle_tex_img, fixed_tex_img, 5, cv::INPAINT_NS);
 }
 
 void DecalPainter::blend_decal_with_texture(
@@ -537,7 +576,7 @@ void DecalPainter::blend_decal_with_texture(
 	cv::MatSize tex_size	= m_tex_img.size;
 	//cv::Mat3b	textured_decal_img = cv::Mat3b(blend_rect.width, blend_rect.height);
 
-	float bgr_treshold = 0.0f;
+	uchar bgr_treshold = 0;
 	for (int i = 0; i < blend_rect.width; ++i)
 	{
 		int px = i + blend_rect.x;
@@ -550,10 +589,10 @@ void DecalPainter::blend_decal_with_texture(
 			int tex_iy = int((double)tex_size[1] * co[0]);
 			if (tex_ix >= 0 && tex_ix < tex_size[0] && tex_iy >= 0 && tex_iy < tex_size[1])
 			{
-				cv::Vec3f decal_pix = decal_img.at<cv::Vec3b>(blend_rect.width - i - 1, j);
-				if (decal_pix[0] > bgr_treshold && decal_pix[1] > bgr_treshold && decal_pix[2] > bgr_treshold)
+				cv::Vec3b decal_pix = decal_img.at<cv::Vec3b>(blend_rect.width - i - 1, j);
+				if (true/*decal_pix[0] > bgr_treshold && decal_pix[1] > bgr_treshold && decal_pix[2] > bgr_treshold*/)
 				{
-					cv::Vec3f tex_pix = m_tex_img(tex_ix, tex_iy);
+					//cv::Vec3b tex_pix = m_tex_img(tex_ix, tex_iy);
 					//textured_decal_img(px, py) = tex_pix;
 					blended_tex_img(tex_ix, tex_iy) = decal_pix;
 					blend_mask(tex_ix, tex_iy) = uchar(255);
@@ -562,11 +601,11 @@ void DecalPainter::blend_decal_with_texture(
 		}
 	}
 #if 0
+	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_triangle.png", blend_mask);
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\textured_decal.png", textured_decal_img);
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\laxsquadT_mBBB_xLA4_0430.1001.jpg", mod_tex_img);
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask.png", mask_tex_img);
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_1.png", mask_tex_img_1);
-	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_triangle.png", mask_triangle_tex_img);
 #endif
 }
 
@@ -767,6 +806,9 @@ replace all the decal area by an upscaled version of bgr_rect in the decal image
 @bgr_rect: the rectangle where pixels are of an empty t-shirt*/
 int DecalPainter::erase_decal(cv::Mat3b &erased_texture, cv::Rect2d bgr_rect)
 {
+	if (!check_valid_data())
+		return INVALID_DATA;
+
 	std::vector<FPointer> decal_trigs;
 	std::vector<std::vector<VPointer>> rect_boundary;
 	int err = find_3D_mesh_decal_area(m_mesh, m_decal_anchor_corners, decal_trigs, rect_boundary);
@@ -782,27 +824,32 @@ int DecalPainter::erase_decal(cv::Mat3b &erased_texture, cv::Rect2d bgr_rect)
 
 	cv::Mat3b textured_ras_img;
 	textured_ras_img = fill_texture_color_in_decal_mapping(m_mapping_size, m_tex_img, tex_coords);
+	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\textured_mapping.png",textured_ras_img);
 
 	int w = textured_ras_img.size[0];
 	int h = textured_ras_img.size[1];
 	cv::Rect roi (int(bgr_rect.x*w), int(bgr_rect.y*h), int(bgr_rect.width*w), int(bgr_rect.height*h)) ;
 	cv::Mat3b bgr_img = textured_ras_img(roi);
 	cv::resize(bgr_img, bgr_img, cv::Size(w, h), 0, 0, cv::INTER_CUBIC);
+	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\made_up_background_img.png", bgr_img);
 
 	cv::Size2i		paint_size(static_cast<int>(m_mapping_size.width), static_cast<int>(m_mapping_size.height));
 	cv::Point2i		decal_pos(static_cast<int>(0.5*(m_mapping_size.width - paint_size.width)), static_cast<int>(0.5*(m_mapping_size.height - paint_size.height)));
 	cv::Rect2i		decal_rect(decal_pos.x, decal_pos.y, paint_size.width, paint_size.height);
-	erased_texture = m_tex_img.clone();
+	cv::Mat3b		erased_texture_tmp = m_tex_img.clone();
 	cv::Mat1b		blended_mask(m_tex_img.size[0], m_tex_img.size[1, uchar(0)]);
-	blend_decal_with_texture(m_tex_img, tex_coords, decal_rect, bgr_img, m_tex_img, blended_mask);
-
-	fix_tiny_gaps(decal_trigs, blended_mask, m_tex_img);
+	blend_decal_with_texture(m_tex_img, tex_coords, decal_rect, bgr_img, erased_texture_tmp, blended_mask);
+	
+	fix_tiny_gaps(decal_trigs, blended_mask, erased_texture_tmp, erased_texture);
 
 	return NO_ERROR;
 }
 
 int DecalPainter::paint_decal(cv::Mat3b &painted_texture)
 {
+	if (!check_valid_data())
+		return INVALID_DATA;
+
 	std::vector<FPointer> decal_trigs;
 	std::vector<std::vector<VPointer>> rect_boundary;
 	int err = find_3D_mesh_decal_area(m_mesh, m_decal_anchor_corners, decal_trigs, rect_boundary);
@@ -827,13 +874,14 @@ int DecalPainter::paint_decal(cv::Mat3b &painted_texture)
 	cv::rotate(m_decal_img, m_decal_img, cv::ROTATE_90_CLOCKWISE);
 	cv::resize(m_decal_img, m_decal_img, paint_size, 0, 0, INTER_AREA);
 
-	painted_texture = m_tex_img.clone();
+	cv::Mat3b painted_texture_tmp = m_tex_img.clone();
 	cv::Mat1b blended_mask(m_tex_img.size[0], m_tex_img.size[1, uchar(0)]);
-	blend_decal_with_texture(m_tex_img, tex_coords, decal_rect, m_decal_img, painted_texture, blended_mask);
+	blend_decal_with_texture(m_tex_img, tex_coords, decal_rect, m_decal_img, painted_texture_tmp, blended_mask);
+	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\gaps_before_fill.jpg", painted_texture_tmp);
 
-	fix_tiny_gaps(decal_trigs, blended_mask, painted_texture);
-
-	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\textured_decal.png", textured_decal_img);
+	fix_tiny_gaps(decal_trigs, blended_mask, painted_texture_tmp, painted_texture);
+	
+	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\gasp_after_fill.jpg", painted_texture);
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\laxsquadT_mBBB_xLA4_0430.1001.jpg", painted_tex_img);
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask.png", mask_tex_img);
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_1.png", mask_tex_img_1);
@@ -845,7 +893,10 @@ int DecalPainter::paint_decal(cv::Mat3b &painted_texture)
 bool DecalPainter::set_mesh(std::string path)
 {
 	if (!is_file_exist(path))
+	{
+		std::cerr << "missing file: " << path << std::endl;
 		return false;
+	}
 
 	tri::io::Importer<MyMesh>::Open(m_mesh, path.c_str());
 	return true;
@@ -854,7 +905,10 @@ bool DecalPainter::set_mesh(std::string path)
 bool DecalPainter::set_mesh_texture(std::string path)
 {
 	if (!is_file_exist(path))
+	{
+		std::cerr << "missing file: " << path << std::endl;
 		return false;
+	}
 	m_tex_img = cv::imread(path);
 	return true;
 }
@@ -866,13 +920,22 @@ void DecalPainter::set_decal_anchor_corners(std::array<vcgPoint3, 4> points)
 
 bool DecalPainter::set_decal_anchor_corners(std::string path)
 {
+	if (!is_file_exist(path))
+	{
+		std::cerr << "missing file: " << path << std::endl;
+		return false;
+	}
+
 	return import_decal_rectangle(path, m_decal_anchor_corners);
 }
 
 bool DecalPainter::set_decal_image(std::string path)
 {
 	if (!is_file_exist(path))
+	{
+		std::cerr << "missing file: " << path << std::endl;
 		return false;
+	}
 
 	m_decal_img = cv::imread(path, cv::IMREAD_COLOR);
 	return true;
