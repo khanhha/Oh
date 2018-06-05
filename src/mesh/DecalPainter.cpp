@@ -570,13 +570,12 @@ void DecalPainter::fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::M
 }
 
 void DecalPainter::blend_decal_with_texture(
-	const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat3b &decal_img, 
-	cv::Mat3b &blended_tex_img, cv::Mat1b &blend_mask)
+	const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat3b &decal_img, const cv::Mat1b &decal_img_alpha,
+	cv::Mat3b &blended_tex_img,  cv::Mat1b &blend_mask)
 {
 	cv::MatSize tex_size	= m_tex_img.size;
 	//cv::Mat3b	textured_decal_img = cv::Mat3b(blend_rect.width, blend_rect.height);
 
-	uchar bgr_treshold = 0;
 	for (int i = 0; i < blend_rect.width; ++i)
 	{
 		int px = i + blend_rect.x;
@@ -590,22 +589,25 @@ void DecalPainter::blend_decal_with_texture(
 			if (tex_ix >= 0 && tex_ix < tex_size[0] && tex_iy >= 0 && tex_iy < tex_size[1])
 			{
 				cv::Vec3b decal_pix = decal_img.at<cv::Vec3b>(blend_rect.width - i - 1, j);
-				if (true/*decal_pix[0] > bgr_treshold && decal_pix[1] > bgr_treshold && decal_pix[2] > bgr_treshold*/)
+				uchar alpha = decal_img_alpha.at<uchar>(blend_rect.width - i - 1, j);
+				if (alpha > 0 )
 				{
 					//cv::Vec3b tex_pix = m_tex_img(tex_ix, tex_iy);
 					//textured_decal_img(px, py) = tex_pix;
-					blended_tex_img(tex_ix, tex_iy) = decal_pix;
+					blended_tex_img(tex_ix, tex_iy) = float(alpha)/255.0*decal_pix;// decal_pix;
 					blend_mask(tex_ix, tex_iy) = uchar(255);
 				}
 			}
 		}
 	}
+
 #if 0
+	cv::imwrite("D:\\Projects\\Oh\\Oh\\src\\mesh\\data\\texture_decal_blend_mask.png", blend_mask);
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_triangle.png", blend_mask);
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\textured_decal.png", textured_decal_img);
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\laxsquadT_mBBB_xLA4_0430.1001.jpg", mod_tex_img);
 	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask.png", mask_tex_img);
-	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_1.png", mask_tex_img_1);
+	cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_1.png", mask_tex_img_1);
 #endif
 }
 
@@ -801,6 +803,17 @@ void DecalPainter::parameterizre_decal_rect(MyMesh &mesh, const std::vector<FPoi
 	V_uv = 0.5 * (1. + V_uv.array());
 }
 
+void DecalPainter::preprocess_decal_img(cv::Size2i size)
+{
+	cv::flip(m_decal_img, m_decal_img, 1);
+	cv::rotate(m_decal_img, m_decal_img, cv::ROTATE_90_CLOCKWISE);
+	cv::resize(m_decal_img, m_decal_img, size, 0, 0, INTER_AREA);
+
+	cv::flip(m_decal_img_alpha, m_decal_img_alpha, 1);
+	cv::rotate(m_decal_img_alpha, m_decal_img_alpha, cv::ROTATE_90_CLOCKWISE);
+	cv::resize(m_decal_img_alpha, m_decal_img_alpha, size, 0, 0, cv::INTER_NEAREST);
+}
+
 /*
 replace all the decal area by an upscaled version of bgr_rect in the decal image
 @bgr_rect: the rectangle where pixels are of an empty t-shirt*/
@@ -831,14 +844,14 @@ int DecalPainter::erase_decal(cv::Mat3b &erased_texture, cv::Rect2d bgr_rect)
 	cv::Rect roi (int(bgr_rect.x*w), int(bgr_rect.y*h), int(bgr_rect.width*w), int(bgr_rect.height*h)) ;
 	cv::Mat3b bgr_img = textured_ras_img(roi);
 	cv::resize(bgr_img, bgr_img, cv::Size(w, h), 0, 0, cv::INTER_CUBIC);
-	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\made_up_background_img.png", bgr_img);
+	cv::Mat1b alpha_bgr_img(bgr_img.size(), 255);
 
 	cv::Size2i		paint_size(static_cast<int>(m_mapping_size.width), static_cast<int>(m_mapping_size.height));
 	cv::Point2i		decal_pos(static_cast<int>(0.5*(m_mapping_size.width - paint_size.width)), static_cast<int>(0.5*(m_mapping_size.height - paint_size.height)));
 	cv::Rect2i		decal_rect(decal_pos.x, decal_pos.y, paint_size.width, paint_size.height);
 	cv::Mat3b		erased_texture_tmp = m_tex_img.clone();
 	cv::Mat1b		blended_mask(m_tex_img.size[0], m_tex_img.size[1, uchar(0)]);
-	blend_decal_with_texture(m_tex_img, tex_coords, decal_rect, bgr_img, erased_texture_tmp, blended_mask);
+	blend_decal_with_texture(m_tex_img, tex_coords, decal_rect, bgr_img, alpha_bgr_img, erased_texture_tmp, blended_mask);
 	
 	fix_tiny_gaps(decal_trigs, blended_mask, erased_texture_tmp, erased_texture);
 
@@ -870,23 +883,24 @@ int DecalPainter::paint_decal(cv::Mat3b &painted_texture)
 
 	const cv::MatSize &tex_size = m_tex_img.size;
 
-	cv::flip(m_decal_img, m_decal_img, 1);
-	cv::rotate(m_decal_img, m_decal_img, cv::ROTATE_90_CLOCKWISE);
-	cv::resize(m_decal_img, m_decal_img, paint_size, 0, 0, INTER_AREA);
+	preprocess_decal_img(paint_size);
 
 	cv::Mat3b painted_texture_tmp = m_tex_img.clone();
 	cv::Mat1b blended_mask(m_tex_img.size[0], m_tex_img.size[1, uchar(0)]);
-	blend_decal_with_texture(m_tex_img, tex_coords, decal_rect, m_decal_img, painted_texture_tmp, blended_mask);
-	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\gaps_before_fill.jpg", painted_texture_tmp);
+	blend_decal_with_texture(m_tex_img, tex_coords, decal_rect, m_decal_img, m_decal_img_alpha,  painted_texture_tmp, blended_mask);
 
+#define NO_FIX 1
+#ifdef NO_FIX
+	painted_texture = painted_texture_tmp.clone();
+#else
 	fix_tiny_gaps(decal_trigs, blended_mask, painted_texture_tmp, painted_texture);
-	
+#endif	
+
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\gasp_after_fill.jpg", painted_texture);
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\laxsquadT_mBBB_xLA4_0430.1001.jpg", painted_tex_img);
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask.png", mask_tex_img);
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_1.png", mask_tex_img_1);
 	//cv::imwrite("D:\\Projects\\Oh\\data\\3D\\AG_laxsquad_Box\\result\\texture_decal_blend_mask_triangle.png", mask_triangle_tex_img);
-
 	return NO_ERROR;
 }
 
@@ -937,7 +951,19 @@ bool DecalPainter::set_decal_image(std::string path)
 		return false;
 	}
 
-	m_decal_img = cv::imread(path, cv::IMREAD_COLOR);
+	cv::Mat img = cv::imread(path, cv::IMREAD_UNCHANGED);
+	if (img.channels() != 4)
+	{
+		std::cerr << "decal image has not enough 4 channel" << std::endl;
+		return false;
+	}
+
+	cv::Mat rgba[4];
+	cv::split(img, rgba);
+	cv::Mat rgb[3] = { rgba[0], rgba[1], rgba[2] };
+	cv::merge(rgb, 3, m_decal_img);
+
+	m_decal_img_alpha = rgba[3];
 	return true;
 }
 

@@ -51,11 +51,11 @@ int main(int argc, char *argv[])
 	DecalPainter dpainter;
 
 	std::cout << "importing data..." << std::endl;
-	dpainter.set_mesh(mesh_path);
-	dpainter.set_mesh_texture(org_texture_img_path);
-
 	dpainter.set_decal_anchor_corners(decal_rect_file_path);
 	dpainter.set_decal_image(decal_img_path);
+
+	dpainter.set_mesh(mesh_path);
+	dpainter.set_mesh_texture(org_texture_img_path);
 
 	cv::Mat3b img_ret;
 	int err = 0;

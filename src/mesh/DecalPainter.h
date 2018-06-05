@@ -65,6 +65,7 @@ private:
 	vcgRect3	m_decal_anchor_corners;
 	MyMesh		m_mesh;
 	cv::Mat3b	m_decal_img;
+	cv::Mat1b	m_decal_img_alpha;
 	cv::Mat3b	m_tex_img;
 	cv::Size	m_mapping_size; //the resolution of 2D mapping of decal area. The higher the value is, the less tiny gaps in the mapping there are
 	double		m_paint_percent; //how many percent of m_mapping_size that the decal image takes up
@@ -92,6 +93,7 @@ public:
 	void set_mapping_size(cv::Size size, double paint_size = 1.0);
 	bool import_decal_rectangle(std::string file_path, vcgRect3 &decal_rect);
 private:
+	void preprocess_decal_img(cv::Size2i size);
 	void mesh_matrix(MyMesh &mesh, EMatrixXScalar &V, EMatrixX &F);
 	void mesh_matrix(MyMesh &mesh, const std::vector<FPointer> &trigs, EMatrixXScalar &V, EMatrixX &F, EVectorX &vmap);
 	CvRect triangle_bounding_rect(const cvPoint2 coords[3]);
@@ -119,7 +121,7 @@ private:
 	void generate_texture_coordinates(const std::vector<FPointer> &trigs, const EMatrixX &F, const EMatrixXScalar &V_uv, const cv::Size2i &img_size, cv::Mat2f &tex_coords);
 	
 	void fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::Mat1b &blended_mask, const cv::Mat3b &blended_tex_img, cv::Mat3b &fixed_tex_img);
-	void blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat3b &decal_img,
+	void blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat3b &decal_img, const cv::Mat1b &decal_img_alpha,
 							cv::Mat3b &blended_tex_img, cv::Mat1b &blend_mask);
 
 	void draw_texture_triangle_over_img(cv::Mat1b &tex, const std::vector<FPointer> &trigs, Scalar color, int type = cv::FILLED);
