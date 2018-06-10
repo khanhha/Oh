@@ -39,7 +39,7 @@ class BackgroundSubtractor:
 
         out_img = cv.bitwise_and(img_in, img_in, mask=out_mask)
 
-        return  out_img
+        return  out_img, out_mask
 
     def __train_model(self):
         self._bg_img = self._bg_img.astype(np.float32)

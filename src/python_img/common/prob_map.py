@@ -2,19 +2,13 @@ import os
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
-from   matplotlib.colors import LogNorm
 from skimage.segmentation import slic
 from skimage.segmentation import mark_boundaries
-from skimage.data import astronaut
-from skimage.util import img_as_float
-from skimage.util import img_as_ubyte
-from skimage.measure import compare_ssim
-from skimage import data, img_as_float
+from skimage import img_as_float
 from skimage.future import graph
 from sklearn import mixture
 from skimage import exposure
 import skimage.filters as filters
-from scipy.ndimage.filters import generic_filter
 import util
 
 def select_best_gmm_model(X, cluster_range = range(5,10)):
@@ -305,14 +299,14 @@ def build_fg_bg_masks(prob_map, bg_rect=False, fg_threshold = 0.95, as_bool = Fa
     bg_mask = (bg_mask * 255).astype(np.uint8)
 
     kernel_noise = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))
-    kernel_bg_dilate = cv.getStructuringElement(cv.MORPH_RECT, (25, 25))
 
     bg_mask = cv.morphologyEx(bg_mask, cv.MORPH_OPEN, kernel_noise)  # remove noise
+    kernel_bg_dilate = cv.getStructuringElement(cv.MORPH_RECT, (20, 20))
     bg_mask = cv.dilate(bg_mask, kernel_bg_dilate)
     bg_mask = cv.morphologyEx(bg_mask, cv.MORPH_CLOSE, kernel_noise)  # remove noise
 
     fg_mask = cv.morphologyEx(fg_mask, cv.MORPH_CLOSE, kernel_noise)  # remove noise
-    fg_mask = cv.erode(fg_mask, cv.getStructuringElement(cv.MORPH_RECT, (5, 5)))
+    fg_mask = cv.erode(fg_mask, cv.getStructuringElement(cv.MORPH_RECT, (10, 10)))
 
     if bg_rect:
         cnts = cv.findContours(bg_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)

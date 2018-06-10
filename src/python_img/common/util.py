@@ -1,4 +1,5 @@
 import cv2 as cv
+import os
 import numpy as np
 import skimage.filters as skifil
 import scipy.ndimage as scifil
@@ -57,6 +58,18 @@ def remove_light_tubes(img, black = False):
     else:
         img = cv.inpaint(img, mask, 10, cv.INPAINT_TELEA)
     return img
+
+def load_ground_truth_silhouette(ground_truth_dir, img_name):
+    for name in os.listdir(ground_truth_dir):
+        if name in img_name:
+            img = cv.imread(f'{ground_truth_dir}/{name}')
+            img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+            ret, fg_mask = cv.threshold(img, 1, maxval=255, type=cv.THRESH_BINARY)
+            fg_mask = cv.morphologyEx(fg_mask, cv.MORPH_OPEN, cv.getStructuringElement(cv.MORPH_RECT, (4, 4)))
+            fg_mask = resize_common_size(fg_mask)
+            return fg_mask
+
+    return None
 
 def color_constancy(img):
     n_pixels = np.prod(img.shape[:2]).astype(np.float)
