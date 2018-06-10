@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 
 	if (!check_valid_params())
 	{
-		std::cout << "Usage is -type <p-paint, e-erase> \n -br <brightness multiplifier> \n -m <mesh_file> \n -t <texture_file> \n -d <decal_image>   \n -r <rectangle_text_file>  \n -o <output_texture>\n";
+		std::cout << "Usage is -type <p-paint, e-erase> \n -br <brightness multiplifier, -1 or no set for automatic brightness estimation> \n -m <mesh_file> \n -t <texture_file> \n -d <decal_image>   \n -r <rectangle_text_file>  \n -o <output_texture>\n";
 		std::cin.get();
 		exit(0);
 	}
