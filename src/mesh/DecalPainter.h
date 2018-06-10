@@ -82,8 +82,8 @@ public:
 	std::string error_string(int error);
 
 	bool check_valid_data();
-	int paint_decal(cv::Mat3b &painted_texture);
-	int erase_decal(cv::Mat3b &erased_texture, cv::Rect2d bgr_rect = cv::Rect2d(0.1, 0.1, 0.1, 0.1));
+	int  paint_decal(cv::Mat3b &painted_texture, float brightness_mult = -1.0);
+	int  erase_decal(cv::Mat3b &erased_texture, cv::Rect2d bgr_rect = cv::Rect2d(0.1, 0.1, 0.1, 0.1), float brightness_mult = -1.0);
 	bool set_mesh(std::string path);
 	bool set_mesh_texture(std::string path);
 	void set_decal_anchor_corners(std::array<vcgPoint3, 4> points);
@@ -122,11 +122,11 @@ private:
 	
 	void fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::Mat1b &blended_mask, const cv::Mat3b &blended_tex_img, cv::Mat3b &fixed_tex_img);
 	void blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat3b &decal_img, const cv::Mat1b &decal_img_alpha,
-							cv::Mat3b &blended_tex_img, cv::Mat1b &blend_mask);
+							cv::Mat3b &blended_tex_img, cv::Mat1b &blend_mask, float brightness_mult =1.0f);
 
 	void draw_texture_triangle_over_img(cv::Mat1b &tex, const std::vector<FPointer> &trigs, Scalar color, int type = cv::FILLED);
 	cv::Mat3b fill_texture_color_in_decal_mapping(const cv::Size &size, const cv::Mat3b &tex_img, const cv::Mat2f  &tex_coords);
-
+	float estimate_brightness_multiplifer(cv::Mat3b textured_decal_mapping) const;
 #if _DEBUG
 	void construct_a_mesh(MyMesh &mesh, const std::vector<FPointer> &tris, MyMesh &new_mesh);
 	void test_draw_segments(cv::Mat3b &mat, const std::vector<EMatrixXScalar> &paths);
