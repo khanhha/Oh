@@ -100,14 +100,22 @@ int main(int argc, char *argv[])
 		else
 			err = dpainter.paint_decal(img_ret);
 	}
-	else {
+	else if (type == "e") 
+	{
 		std::cout << "erasing decal.." << std::endl;
 		if (brightness_val >= 0.0)
 			err = dpainter.erase_decal(img_ret, cv::Rect2d(0.1, 0.1, 0.1, 0.1), brightness_val);
 		else
 			err = dpainter.erase_decal(img_ret, cv::Rect2d(0.1, 0.1, 0.1, 0.1));
 	}
-
+	else if (type == "ep")
+	{
+		std::cout << "erasing and painting decal.." << std::endl;
+		if (brightness_val >= 0.0)
+			err = dpainter.erase_paint_decal(img_ret, cv::Rect2d(0.1, 0.1, 0.1, 0.1), brightness_val);
+		else
+			err = dpainter.erase_paint_decal(img_ret, cv::Rect2d(0.1, 0.1, 0.1, 0.1));
+	}
 
 	if (err != DecalPainter::NO_ERROR)
 	{

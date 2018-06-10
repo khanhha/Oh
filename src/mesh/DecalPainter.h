@@ -65,7 +65,7 @@ private:
 	vcgRect3	m_decal_anchor_corners;
 	MyMesh		m_mesh;
 	cv::Mat3b	m_decal_img;
-	cv::Mat1b	m_decal_img_alpha;
+	cv::Mat1f	m_decal_img_alpha;
 	cv::Mat3b	m_tex_img;
 	cv::Size	m_mapping_size; //the resolution of 2D mapping of decal area. The higher the value is, the less tiny gaps in the mapping there are
 	double		m_paint_percent; //how many percent of m_mapping_size that the decal image takes up
@@ -84,6 +84,7 @@ public:
 	bool check_valid_data();
 	int  paint_decal(cv::Mat3b &painted_texture, float brightness_mult = -1.0);
 	int  erase_decal(cv::Mat3b &erased_texture, cv::Rect2d bgr_rect = cv::Rect2d(0.1, 0.1, 0.1, 0.1), float brightness_mult = -1.0);
+	int  erase_paint_decal(cv::Mat3b &modified_texture, cv::Rect2d bgr_rect = cv::Rect2d(0.1, 0.1, 0.1, 0.1), float brightness_mult = -1.0);
 	bool set_mesh(std::string path);
 	bool set_mesh_texture(std::string path);
 	void set_decal_anchor_corners(std::array<vcgPoint3, 4> points);
@@ -116,12 +117,12 @@ private:
 		const std::vector<std::vector<VPointer>> &paths,
 		std::vector<EMatrixXScalar> &uvpaths);
 
-
+	int generate_mapping(cv::Mat2f  &tex_coords, std::vector<FPointer> &decal_trigs);
 	void triangle_texture_coords(FPointer trig, cvVec2 tex_cos[3]);
 	void generate_texture_coordinates(const std::vector<FPointer> &trigs, const EMatrixX &F, const EMatrixXScalar &V_uv, const cv::Size2i &img_size, cv::Mat2f &tex_coords);
 	
 	void fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::Mat1b &blended_mask, const cv::Mat3b &blended_tex_img, cv::Mat3b &fixed_tex_img);
-	void blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat3b &decal_img, const cv::Mat1b &decal_img_alpha,
+	void blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat3b &decal_img, const cv::Mat1f &decal_img_alpha,
 							cv::Mat3b &blended_tex_img, cv::Mat1b &blend_mask, float brightness_mult =1.0f);
 
 	void draw_texture_triangle_over_img(cv::Mat1b &tex, const std::vector<FPointer> &trigs, Scalar color, int type = cv::FILLED);
