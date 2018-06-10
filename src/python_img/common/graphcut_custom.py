@@ -41,7 +41,7 @@ def superpixel_graph(img, fg_mask, bg_mask, edge_map):
     masked_img = cv.bitwise_and(img, img, mask=mid_mask.astype(np.uint8))
     #masked_img = img
 
-    segments = skseg.slic(masked_img, n_segments=15000, convert2lab=True)
+    segments = skseg.slic(masked_img, n_segments=25000, convert2lab=True)
     unq_segments = np.unique(segments)
     n_segments = len(unq_segments)
 
@@ -115,28 +115,40 @@ def set_segment_value(all_segments, segments, values, out_range = (0,1)):
 def calc_prob_images(img, fg_mask, bg_mask, mid_mask_not, mid_mask_idxs):
     bg_mask_dilated = skmorph.binary_dilation(np.bitwise_not(bg_mask), skmorph.rectangle(50,50))
     bg_train_sample_mask = np.bitwise_and(bg_mask_dilated, bg_mask)
-    gmm_bg = prob_map.estimate_gmm(img, bg_train_sample_mask, 9, 'full')
-    gmm_fg = prob_map.estimate_gmm(img, fg_mask, 9, 'full')
-
     mid_samples = img[mid_mask_idxs[0], mid_mask_idxs[1]]
 
+    fg_samples_mask = np.bitwise_and(np.bitwise_not(skmorph.erosion(fg_mask, skmorph.disk(25))), fg_mask)
     scores_fg_img = np.zeros_like(fg_mask, dtype=np.float32)
-    scores_bg_img = np.zeros_like(fg_mask, dtype=np.float32)
-
+    gmm_fg = prob_map.estimate_gmm(img, fg_samples_mask, 5, 'full')
     scores_fg_img[mid_mask_idxs[0], mid_mask_idxs[1]] = gmm_fg.score_samples(mid_samples)
-    scores_bg_img[mid_mask_idxs[0], mid_mask_idxs[1]] = gmm_bg.score_samples(mid_samples)
-
-    scores_fg_img = ndi.median_filter(scores_fg_img, size=5)
-    scores_bg_img = ndi.median_filter(scores_bg_img, size=5)
-
+    print(f'\tforeground min, max = {scores_fg_img.min()}, {scores_fg_img.max()}')
+    scores_fg_img = np.exp(scores_fg_img)
+    scores_fg_img = skexposure.adjust_gamma(scores_fg_img, 0.2)
+    #scores_fg_img = ndi.median_filter(scores_fg_img, size=2)
+    #scores_fg_img = rescale_img(scores_fg_img, mid_mask_idxs, (-200, 0))
     scores_fg_img[mid_mask_not] = 0
+
+    scores_bg_img = np.zeros_like(fg_mask, dtype=np.float32)
+    gmm_bg = prob_map.estimate_gmm(img, bg_train_sample_mask, 5, 'full')
+    scores_bg_img[mid_mask_idxs[0], mid_mask_idxs[1]] = gmm_bg.score_samples(mid_samples)
+    print(f'\tbackground min, max = {scores_bg_img.min()}, {scores_bg_img.max()}')
+    scores_bg_img = np.exp(scores_bg_img)
+    scores_bg_img = skexposure.adjust_gamma(scores_bg_img, 0.2)
+    #scores_bg_img = rescale_img(scores_bg_img, mid_mask_idxs, (-200, 0))
+    #scores_bg_img = ndi.median_filter(scores_bg_img, size=2)
     scores_bg_img[mid_mask_not] = 0
+
+    plt.clf()
+    plt.subplot(131), plt.imshow(img); plt.imshow(fg_samples_mask, alpha=0.4)
+    plt.subplot(132), plt.imshow(scores_fg_img, cmap='gray')
+    plt.subplot(133), plt.imshow(scores_bg_img, cmap='gray')
+    plt.savefig(f'{OUT_DIR_PROB_MAP}{CUR_FILENAME}.png', dpi = 1000)
 
     return scores_fg_img, scores_bg_img
 
 def calc_prob_map_superpixel_segment(scores_fg_img, scores_bg_img, segments, mid_segments, mid_mask_idxs):
-    scores_seg_fg = np.array([np.median(scores_fg_img[segments == idx], axis=0) for idx in mid_segments])
-    scores_seg_bg = np.array([np.median(scores_bg_img[segments == idx], axis=0) for idx in mid_segments])
+    scores_seg_fg = np.array([np.mean(scores_fg_img[segments == idx], axis=0) for idx in mid_segments])
+    scores_seg_bg = np.array([np.mean(scores_bg_img[segments == idx], axis=0) for idx in mid_segments])
 
     scores_fg_seg_img = set_segment_value(segments, mid_segments, scores_seg_fg)
     scores_bg_seg_img = set_segment_value(segments, mid_segments, scores_seg_bg)
@@ -153,16 +165,15 @@ def calc_prob_map_superpixel_segment(scores_fg_img, scores_bg_img, segments, mid
 
 def calc_edge_map(img, mask):
     img_1 = img[:,:,::-1]
-    edge_map = skfilter.sobel(skcolor.rgb2gray(img_1), mask= mask)
-    #edge_map = skexposure.equalize_adapthist(edge_map, kernel_size=30, clip_limit=1.0)
+    edge_map = skfilter.sobel(skfilter.gaussian(skcolor.rgb2gray(img_1), sigma=5), mask= mask)
+    #edge_map = skfilter.sobel(skcolor.rgb2gray(img_1), mask= mask)
     edge_map = skexposure.equalize_adapthist(edge_map, kernel_size=30)
-    #edge_map = ndi.median_filter(edge_map, size=5)
     edge_map[np.bitwise_not(mask)] = 0
     return edge_map
 
 def suplement_edge_map_with_prob_maps(edge_map, mid_mask, fg_prob_map, bg_prob_map):
-    fg_edge_map = skfilter.sobel(fg_prob_map, mask = mid_mask)
-    bg_edge_map = skfilter.sobel(bg_prob_map, mask = mid_mask)
+    fg_edge_map = skfilter.sobel(skfilter.gaussian(fg_prob_map, sigma=5), mask = mid_mask)
+    bg_edge_map = skfilter.sobel(skfilter.gaussian(bg_prob_map, sigma=5), mask = mid_mask)
 
     blended_edge_map = 0.4 *edge_map + 0.3 * fg_edge_map + 0.3 * bg_edge_map
     plt.clf()
@@ -176,8 +187,8 @@ def suplement_edge_map_with_prob_maps(edge_map, mid_mask, fg_prob_map, bg_prob_m
 
 #bgsub = BackgroundSubtractor(bg_img_path)
 
-plt.rcParams['xtick.labelsize'] = 2
-plt.rcParams['ytick.labelsize'] = 2
+plt.rcParams['xtick.labelsize'] = 10
+plt.rcParams['ytick.labelsize'] = 10
 
 for file_name in os.listdir(DIR):
     #if file_name not in 'image178_laxsquadT_mBBlue_LL_0427.jpg':
@@ -186,6 +197,7 @@ for file_name in os.listdir(DIR):
 
     print(f'processing file {file_name}')
     img = util.preprocess_img(cv.imread(f'{DIR}{file_name}'))
+    img = util.remove_light_tubes(img, black=True)
 
     print('\tcalculate silhouette')
     prb_label = prob_map.find_mean_silhouette_label(img_label_mapping, file_name)
@@ -196,6 +208,9 @@ for file_name in os.listdir(DIR):
     mid_mask_not = np.bitwise_not(mid_mask)
     mid_rows, mid_cols = np.where(mid_mask==True)
     mid_mask_idxs = (mid_rows, mid_cols)
+
+    print('\testimate probability map')
+    scores_fg_img, scores_bg_img = calc_prob_images(img, fg_mask, bg_mask, mid_mask_not, mid_mask_idxs)
 
     # print('\tbackground subtraction mask')
     # _, fg_mask_bgsub = bgsub.extract_foreground_mask(img)
@@ -213,21 +228,22 @@ for file_name in os.listdir(DIR):
     # plt.subplot(133); plt.imshow(img); plt.imshow(bg_prob_bgsub, alpha=0.5)
     # plt.show()
     # continue
-
-    #fg_mask = np.bitwise_or(fg_mask, skmorph.binary_erosion(fg_mask_bgsub, skmorph.disk(20)))
+    # fg_mask = np.bitwise_or(fg_mask, skmorph.binary_erosion(fg_mask_bgsub, skmorph.disk(20)))
 
     print('\tedge map')
-    img = util.remove_light_tubes(img, black=True)
     edge_map = calc_edge_map(img, mid_mask)
+    edge_map = suplement_edge_map_with_prob_maps(edge_map, mid_mask,
+                                                 rescale_img(scores_fg_img,(mid_rows, mid_cols)),
+                                                 rescale_img(scores_bg_img,(mid_rows, mid_cols)))
+
+    scores_fg_img = rescale_img(scores_fg_img, mid_mask_idxs, (-200, 0))
+    scores_bg_img = rescale_img(scores_bg_img, mid_mask_idxs, (-200, 0))
 
     print('\tsuperpixel graph')
     graph_segments, node_marks, segments = superpixel_graph(img, fg_mask, bg_mask, edge_map)
     mid_segments_mask = (node_marks==MID_NODE)
     mid_segments_mapping = np.cumsum(mid_segments_mask.astype(np.uint32))
     mid_segments = np.where(mid_segments_mask==True)[0]
-
-    print('\testimate probability map')
-    scores_fg_img, scores_bg_img = calc_prob_images(img, fg_mask, bg_mask, mid_mask_not, mid_mask_idxs)
 
     #scores_fg_img, fg_minval, fg_maxval = rescale_img(scores_fg_img, (mid_rows, mid_cols), (0,1))
     #scores_bg_img, bg_minval, bg_maxval = rescale_img(scores_bg_img, (mid_rows, mid_cols), (0,1))
@@ -252,9 +268,6 @@ for file_name in os.listdir(DIR):
     # plt.subplot(122), plt.imshow(img[:,:,::-1]); plt.imshow(test_bg_img, cmap='gray', alpha = 0.8)
     # plt.savefig(f'{OUT_DIR_TEST}/{file_name[0:-4]}_prob.png', dpi = 1000)
     # continue
-
-    edge_map = suplement_edge_map_with_prob_maps(edge_map, mid_mask, rescale_img(scores_fg_img,(mid_rows, mid_cols)), rescale_img(scores_bg_img,(mid_rows, mid_cols)))
-
     print('\tmax flow')
     num_nodes = np.prod(mid_segments.shape)
     graph_maxflow = maxflow.Graph[float](num_nodes, num_nodes*4)
@@ -270,8 +283,6 @@ for file_name in os.listdir(DIR):
             graph_maxflow.add_edge(nodes[mid_node_idx_x], nodes[mid_node_idx_y], smoothess_cost, smoothess_cost)
 
     print(f'\tsmoothess  min, max = {min(smoothess_values)}, {max(smoothess_values)}')
-    print(f'\tforeground min, max = {scores_seg_fg.min()}, {scores_seg_fg.max()}')
-    print(f'\tbackground min, max = {scores_seg_bg.min()}, {scores_seg_bg.max()}')
     for mid_node_idx in range(num_nodes):
         graph_maxflow.add_tedge(nodes[mid_node_idx], scores_seg_fg[mid_node_idx], scores_seg_bg[mid_node_idx])
 
@@ -287,8 +298,9 @@ for file_name in os.listdir(DIR):
     result_fg_img = fg_mask.copy()
     for seg in mid_segments[np.bitwise_not(cut_segs_mask)]:
         result_fg_img[segments==seg] = True
+
     result_fg_img = skmorph.remove_small_objects(result_fg_img, 400)
-    result_fg_img = skmorph.binary_closing(result_fg_img, skmorph.disk(5))
+    result_fg_img = skmorph.binary_closing(result_fg_img, skmorph.disk(10))
 
     cut_segments_img = skcolor.label2rgb(cut_segments_label, img, alpha=0.5)
     scores_fg_seg_img = set_segment_value(segments, mid_segments, scores_seg_fg)
