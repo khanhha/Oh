@@ -816,8 +816,11 @@ void DecalPainter::parameterizre_decal_rect(MyMesh &mesh, const std::vector<FPoi
 }
 
 
-void DecalPainter::preprocess_decal_img(cv::Size2i size)
+void DecalPainter::preprocess_decal_img(cv::Size2i size, float smooth_sigma/*= 0.0*/)
 {
+	if (smooth_sigma > 0.0)
+		cv::GaussianBlur(m_decal_img, m_decal_img, cv::Size(0, 0), smooth_sigma, smooth_sigma);
+
 	cv::flip(m_decal_img, m_decal_img, 1);
 	cv::rotate(m_decal_img, m_decal_img, cv::ROTATE_90_CLOCKWISE);
 	cv::resize(m_decal_img, m_decal_img, size, 0, 0, INTER_AREA);
@@ -879,7 +882,7 @@ int DecalPainter::erase_decal(cv::Mat3b &erased_texture, cv::Rect2d bgr_rect, fl
 	return NO_ERROR;
 }
 
-int DecalPainter::paint_decal(cv::Mat3b &painted_texture, float brightness_mult)
+int DecalPainter::paint_decal(cv::Mat3b &painted_texture, float brightness_mult, float decal_smooth_sigma/*= 0.0*/)
 {
 	if (!check_valid_data())
 		return INVALID_DATA;
@@ -895,7 +898,7 @@ int DecalPainter::paint_decal(cv::Mat3b &painted_texture, float brightness_mult)
 
 	const cv::MatSize &tex_size = m_tex_img.size;
 
-	preprocess_decal_img(paint_size);
+	preprocess_decal_img(paint_size, decal_smooth_sigma);
 
 	if (brightness_mult <= -1.0) {
 		cv::Mat3b textured_mapping = fill_texture_color_in_decal_mapping(m_mapping_size, m_tex_img, tex_coords);
@@ -921,7 +924,7 @@ int DecalPainter::paint_decal(cv::Mat3b &painted_texture, float brightness_mult)
 	return NO_ERROR;
 }
 
-int  DecalPainter::erase_paint_decal(cv::Mat3b &modified_texture, cv::Rect2d bgr_rect, float brightness_mult)
+int  DecalPainter::erase_paint_decal(cv::Mat3b &modified_texture, cv::Rect2d bgr_rect, float brightness_mult, float decal_smooth_sigma/*= 0.0*/)
 {
 	if (!check_valid_data())
 		return INVALID_DATA;
@@ -936,7 +939,8 @@ int  DecalPainter::erase_paint_decal(cv::Mat3b &modified_texture, cv::Rect2d bgr
 	cv::resize(bgr_img, bgr_img, m_mapping_size, 0, 0, cv::INTER_CUBIC);
 	cv::Mat1f alpha_bgr_img(bgr_img.size(), 1.0);
 
-	preprocess_decal_img(m_mapping_size);
+	preprocess_decal_img(m_mapping_size, decal_smooth_sigma);
+
 	cv::Mat3b blended_decal_img;
 	cv::blendLinear(bgr_img, m_decal_img, 1.0 - m_decal_img_alpha, m_decal_img_alpha, blended_decal_img);
 	if (brightness_mult < 0)

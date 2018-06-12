@@ -82,9 +82,9 @@ public:
 	std::string error_string(int error);
 
 	bool check_valid_data();
-	int  paint_decal(cv::Mat3b &painted_texture, float brightness_mult = -1.0);
+	int  paint_decal(cv::Mat3b &painted_texture, float brightness_mult = -1.0, float decal_smooth_sigma = 0.0);
 	int  erase_decal(cv::Mat3b &erased_texture, cv::Rect2d bgr_rect = cv::Rect2d(0.1, 0.1, 0.1, 0.1), float brightness_mult = -1.0);
-	int  erase_paint_decal(cv::Mat3b &modified_texture, cv::Rect2d bgr_rect = cv::Rect2d(0.1, 0.1, 0.1, 0.1), float brightness_mult = -1.0);
+	int  erase_paint_decal(cv::Mat3b &modified_texture, cv::Rect2d bgr_rect = cv::Rect2d(0.1, 0.1, 0.1, 0.1), float brightness_mult = -1.0, float decal_smooth_sigma = 0.0);
 	bool set_mesh(std::string path);
 	bool set_mesh_texture(std::string path);
 	void set_decal_anchor_corners(std::array<vcgPoint3, 4> points);
@@ -94,7 +94,7 @@ public:
 	void set_mapping_size(cv::Size size, double paint_size = 1.0);
 	bool import_decal_rectangle(std::string file_path, vcgRect3 &decal_rect);
 private:
-	void preprocess_decal_img(cv::Size2i size);
+	void preprocess_decal_img(cv::Size2i size, float decal_smooth_sigma = 0.0);
 	void mesh_matrix(MyMesh &mesh, EMatrixXScalar &V, EMatrixX &F);
 	void mesh_matrix(MyMesh &mesh, const std::vector<FPointer> &trigs, EMatrixXScalar &V, EMatrixX &F, EVectorX &vmap);
 	CvRect triangle_bounding_rect(const cvPoint2 coords[3]);

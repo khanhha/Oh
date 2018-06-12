@@ -19,6 +19,7 @@ int main(int argc, char *argv[])
 	string out_texture_img_path;
 	string type;
 	float brightness_val = -1;
+	float decal_smooth_sigma = 0.0;
 	auto check_valid_params = [&]() -> bool
 	{
 		if (mesh_path.empty()) 
@@ -66,6 +67,8 @@ int main(int argc, char *argv[])
 				out_texture_img_path = argv[++i];
 			else if (argv_str == "-br")
 				brightness_val = atof(argv[++i]);
+			else if (argv_str == "-dsig")
+				decal_smooth_sigma = atof(argv[++i]);
 			else {
 				std::cout << "Not enough or invalid arguments, please try again.\n" << std::endl;
 				exit(0);
@@ -95,26 +98,17 @@ int main(int argc, char *argv[])
 	if (type == "p")
 	{
 		std::cout << "painting decal..." << std::endl;
-		if (brightness_val >= 0.0)
-			err = dpainter.paint_decal(img_ret, brightness_val);
-		else
-			err = dpainter.paint_decal(img_ret);
+		err = dpainter.paint_decal(img_ret, brightness_val, decal_smooth_sigma);
 	}
 	else if (type == "e") 
 	{
 		std::cout << "erasing decal.." << std::endl;
-		if (brightness_val >= 0.0)
-			err = dpainter.erase_decal(img_ret, cv::Rect2d(0.1, 0.1, 0.1, 0.1), brightness_val);
-		else
-			err = dpainter.erase_decal(img_ret, cv::Rect2d(0.1, 0.1, 0.1, 0.1));
+		err = dpainter.erase_decal(img_ret, cv::Rect2d(0.1, 0.1, 0.1, 0.1), brightness_val);
 	}
 	else if (type == "ep")
 	{
 		std::cout << "erasing and painting decal.." << std::endl;
-		if (brightness_val >= 0.0)
-			err = dpainter.erase_paint_decal(img_ret, cv::Rect2d(0.1, 0.1, 0.1, 0.1), brightness_val);
-		else
-			err = dpainter.erase_paint_decal(img_ret, cv::Rect2d(0.1, 0.1, 0.1, 0.1));
+		err = dpainter.erase_paint_decal(img_ret, cv::Rect2d(0.1, 0.1, 0.1, 0.1), brightness_val, decal_smooth_sigma);
 	}
 
 	if (err != DecalPainter::NO_ERROR)
