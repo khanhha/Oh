@@ -618,7 +618,7 @@ float DecalPainter::estimate_brightness_multiplifer(cv::Mat3b textured_decal_map
 	cv::Mat1b gray_img;
 	cv::cvtColor(textured_decal_mapping, gray_img, cv::COLOR_BGR2GRAY);
 	Scalar avg_bright = cv::mean(gray_img);
-	float avg_bright_val = float(avg_bright[0] / 255.0);
+	float avg_bright_val = 2.0*float(avg_bright[0] / 255.0);
 	//avg_bright_val = std::min<float>(2.0*avg_bright_val, 1.0f); //make it brighter than background a bit
 	return avg_bright_val;
 }
