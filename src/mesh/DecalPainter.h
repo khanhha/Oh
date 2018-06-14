@@ -117,16 +117,18 @@ private:
 		const std::vector<std::vector<VPointer>> &paths,
 		std::vector<EMatrixXScalar> &uvpaths);
 
-	int generate_mapping(cv::Mat2f  &tex_coords, std::vector<FPointer> &decal_trigs);
+	int generate_mapping_texture_space(cv::Size tex_size, std::vector<FPointer> &decal_trigs, cv::Mat2f &tex_coords_map, cv::Mat1b &map_mask);
 	void triangle_texture_coords(FPointer trig, cvVec2 tex_cos[3]);
-	void generate_texture_coordinates(const std::vector<FPointer> &trigs, const EMatrixX &F, const EMatrixXScalar &V_uv, const cv::Size2i &img_size, cv::Mat2f &tex_coords);
+	void generate_texture_coordinates_texture_space(const std::vector<FPointer> &trigs, const EMatrixX &F, const EMatrixXScalar &V_uv, const cv::Size2i &img_size, 
+		cv::Mat2f &tex_coords, cv::Mat1b &tex_coords_mask);
+	void fix_island_boundary_gaps(cv::Mat2f &tex_coords_mapping, cv::Mat1b &tex_coords_mask);
 	
-	void fix_tiny_gaps(const std::vector<FPointer> &decal_trigs, cv::Mat1b &blended_mask, const cv::Mat3b &blended_tex_img, cv::Mat3b &fixed_tex_img);
-	void blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &tex_coords, const cv::Rect2i &blend_rect, const cv::Mat3b &decal_img, const cv::Mat1f &decal_img_alpha,
-							cv::Mat3b &blended_tex_img, cv::Mat1b &blend_mask, float brightness_mult =1.0f);
+	cv::Mat3b blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &mapping_tex_coords, const cv::Mat1b &mapping_mask,
+		const cv::Mat3b &decal_img, const cv::Mat1f &decal_img_alpha, float brightness_mult = 1.0f);
 
-	void draw_texture_triangle_over_img(cv::Mat1b &tex, const std::vector<FPointer> &trigs, Scalar color, int type = cv::FILLED);
-	cv::Mat3b fill_texture_color_in_decal_mapping(const cv::Size &size, const cv::Mat3b &tex_img, const cv::Mat2f  &tex_coords);
+	void generate_decal_in_tex_space_mask(cv::Mat &tex, const std::vector<FPointer> &trigs, Scalar color);
+	void draw_decal_trigs_in_tex_space_mask(cv::Mat &tex, const std::vector<FPointer> &trigs, Scalar color);
+	cv::Mat3b fill_decal_image_with_texture_colors(const cv::Size &decal_size, const cv::Mat3b &tex_img, const cv::Mat2f  &tex_coords, const cv::Mat1b tex_coords_mask);
 	float estimate_brightness_multiplifer(cv::Mat3b textured_decal_mapping) const;
 #if _DEBUG
 	void construct_a_mesh(MyMesh &mesh, const std::vector<FPointer> &tris, MyMesh &new_mesh);
