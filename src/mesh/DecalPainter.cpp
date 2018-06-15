@@ -576,7 +576,7 @@ void DecalPainter::generate_decal_in_tex_space_mask(cv::Mat &tex, const std::vec
 
 void DecalPainter::fix_island_boundary_gaps(cv::Mat2f &tex_coords_mapping, cv::Mat1b &tex_coords_mask)
 {
-	cv::Mat strel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2, 2));
+	cv::Mat strel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(4, 4));
 	cv::dilate(tex_coords_mapping, tex_coords_mapping, strel);
 	cv::dilate(tex_coords_mask, tex_coords_mask, strel);
 }
