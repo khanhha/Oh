@@ -124,7 +124,7 @@ private:
 	void fix_island_boundary_gaps(cv::Mat2f &tex_coords_mapping, cv::Mat1b &tex_coords_mask);
 	
 	cv::Mat3b blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &mapping_tex_coords, const cv::Mat1b &mapping_mask,
-		const cv::Mat3b &decal_img, const cv::Mat1f &decal_img_alpha, float brightness_mult = 1.0f);
+		const cv::Mat3b &decal_img, const cv::Mat1f &decal_img_alpha);
 
 	void generate_decal_in_tex_space_mask(cv::Mat &tex, const std::vector<FPointer> &trigs, Scalar color);
 	void draw_decal_trigs_in_tex_space_mask(cv::Mat &tex, const std::vector<FPointer> &trigs, Scalar color);

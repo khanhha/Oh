@@ -582,8 +582,7 @@ void DecalPainter::fix_island_boundary_gaps(cv::Mat2f &tex_coords_mapping, cv::M
 }
 
 cv::Mat3b DecalPainter::blend_decal_with_texture(const cv::Mat3b &tex_img, const cv::Mat2f &mapping_tex_coords, const cv::Mat1b &mapping_mask,
-	const cv::Mat3b &decal_img, const cv::Mat1f &decal_img_alpha, 
-	float brightness_mult /*= 1.0f*/)
+	const cv::Mat3b &decal_img, const cv::Mat1f &decal_img_alpha)
 {
 	cv::Mat3b blended_tex_img = tex_img.clone();
 
@@ -601,7 +600,7 @@ cv::Mat3b DecalPainter::blend_decal_with_texture(const cv::Mat3b &tex_img, const
 				if (decal_alpha > 0.0f)
 				{
 					const cv::Vec3b &decal_pix = decal_img(tex_co);
-					blended_tex_img(ir, ic) = brightness_mult*decal_pix;
+					blended_tex_img(ir, ic) = (decal_alpha * decal_pix + (1.0f - decal_alpha)*tex_img(ir,ic));
 				}
 			}
 		}
@@ -814,8 +813,10 @@ void DecalPainter::parameterizre_decal_rect(MyMesh &mesh, const std::vector<FPoi
 void DecalPainter::preprocess_decal_img(cv::Size2i size, float smooth_sigma/*= 0.0*/)
 {
 	if (smooth_sigma > 0.0)
+	{
 		cv::GaussianBlur(m_decal_img, m_decal_img, cv::Size(0, 0), smooth_sigma, smooth_sigma);
-
+		cv::GaussianBlur(m_decal_img_alpha, m_decal_img_alpha, cv::Size(0, 0), smooth_sigma, smooth_sigma);
+	}
 	cv::resize(m_decal_img, m_decal_img, size, 0, 0, INTER_AREA);
 	cv::flip(m_decal_img, m_decal_img, 0);
 
@@ -863,9 +864,10 @@ int DecalPainter::erase_decal(cv::Mat3b &erased_texture, cv::Rect2d bgr_rect, fl
 		brightness_mult = estimate_brightness_multiplifer(background_img);
 
 	preprocess_decal_img(m_mapping_size);
+	background_img = brightness_mult * background_img;
 
 	cv::Mat1f alpha_blend_img(m_decal_img.rows, m_decal_img.cols, 1.0);
-	erased_texture = blend_decal_with_texture(m_tex_img, mapping_tex_coords, mapping_mask, background_img, alpha_blend_img, brightness_mult);
+	erased_texture = blend_decal_with_texture(m_tex_img, mapping_tex_coords, mapping_mask, background_img, alpha_blend_img);
 	
 	return NO_ERROR;
 }
@@ -890,7 +892,8 @@ int DecalPainter::paint_decal(cv::Mat3b &painted_texture, float brightness_mult,
 		brightness_mult = estimate_brightness_multiplifer(textured_decal_img);
 	}
 
-	painted_texture = blend_decal_with_texture(m_tex_img, mapping_tex_coords, mapping_mask, m_decal_img, m_decal_img_alpha, brightness_mult);
+	m_decal_img = brightness_mult * m_decal_img;
+	painted_texture = blend_decal_with_texture(m_tex_img, mapping_tex_coords, mapping_mask, m_decal_img, m_decal_img_alpha);
 	
 	return NO_ERROR;
 }
@@ -921,8 +924,9 @@ int  DecalPainter::erase_paint_decal(cv::Mat3b &modified_texture, cv::Rect2d bgr
 	cv::Mat3b painted_decal_over_bgr_img;
 	cv::blendLinear(background_img, m_decal_img, 1.0 - m_decal_img_alpha, m_decal_img_alpha, painted_decal_over_bgr_img);
 
+	painted_decal_over_bgr_img = brightness_mult * painted_decal_over_bgr_img;
 	cv::Mat1f alpha_blend_img(m_decal_img.rows, m_decal_img.cols, 1.0);
-	modified_texture = blend_decal_with_texture(m_tex_img, mapping_tex_coords, mapping_mask, painted_decal_over_bgr_img, alpha_blend_img, brightness_mult);
+	modified_texture = blend_decal_with_texture(m_tex_img, mapping_tex_coords, mapping_mask, painted_decal_over_bgr_img, alpha_blend_img);
 	return NO_ERROR;
 }
 
