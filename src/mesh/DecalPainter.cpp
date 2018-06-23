@@ -820,7 +820,7 @@ void DecalPainter::preprocess_decal_img(cv::Size2i size, float smooth_sigma/*= 0
 	cv::resize(m_decal_img, m_decal_img, size, 0, 0, INTER_AREA);
 	cv::flip(m_decal_img, m_decal_img, 0);
 
-	cv::resize(m_decal_img_alpha, m_decal_img_alpha, size, 0, 0, cv::INTER_NEAREST);
+	cv::resize(m_decal_img_alpha, m_decal_img_alpha, size, 0, 0, cv::INTER_AREA);
 	cv::flip(m_decal_img_alpha, m_decal_img_alpha, 0);
 }
 
